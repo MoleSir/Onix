@@ -14,14 +14,10 @@ mov sp, 0x7c00
 mov si, booting
 call print
 
-xchg bx, bx
-
 mov edi, 0x1000; 读取的目标内存
 mov ecx, 2; 读取扇区数量
 mov bl, 4; 起始扇区位置
 call read_disk
-
-xchg bx, bx
 
 cmp word [0x1000], 0x55aa
 jnz error

@@ -2,12 +2,8 @@
 
 dw 0x55aa; 魔数，用于判断错误
 
-xchg bx, bx
-
 mov si, loading
 call print
-
-xchg bx, bx
 
 detect_memory:
     ; 将 ebx 置为 0
@@ -47,21 +43,31 @@ detect_memory:
 
     xchg bx, bx
 
-    ; 结构体数量
-    mov cx, [ards_count]
-    ; 结构指针
-    mov si, 0
+    mov byte [0xb8000], 'P'
 
-.show 
-    mov eax, [ards_buffer + si]
-    mov ebx, [ards_buffer + si + 8]
-    mov edx, [ards_buffer + si + 16]
-    add si, 20
+    jmp prepare_protected_mode
+
+
+prepare_protected_mode:
     xchg bx, bx
-    loop .show
-    
 
-jmp $
+    cli; 关闭中断
+
+    ; 打开 A20 线
+    in al, 0x92; 将 0x92 端口的数据写入 al
+    or al, 0b10; 将 al 寄存器的第 1 为设置为 1
+    out 0x92, al; 将设置 1 后的 al 写回 0x92 端口
+
+    ; 加载 gdt
+    lgdt [gdt_ptr]
+
+    ; 启动保护模式
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+    ; 用跳转来刷新缓存，启用保护模式
+    jmp dword code_selector:protect_mode
 
 
 print:
@@ -87,6 +93,56 @@ error:
     hlt; CPU 停止
     jmp $ 
     .msg db "Loading Error!", 10, 13, 0;
+
+
+[bits 32]
+protect_mode:
+    xchg bx, bx
+    mov ax, data_selector
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax; 初始化段寄存器
+
+    mov esp, 0x10000; 修改栈顶
+
+    mov byte [0xb8000], 'P'
+
+    mov byte [0x200000], 'P'
+
+jmp $; 阻塞
+
+
+code_selector equ (1 << 3); 代码段选择子
+data_selector equ (2 << 3); 数据段选择子
+
+memory_base equ 0; 内存开始的位置：基地址
+memory_limit equ ((1024 * 1024 * 1024 * 4) / (1024 * 4)) - 1; 内存界限（内存长度 = 4G / 4K - 1）
+
+gdt_ptr:
+    dw (gdt_end - gdt_base) - 1; gdt 界限，长度 - 1
+    dd gdt_base; gdt 起始位置
+gdt_base; gdt 起始位置
+    ; 0 索引描述符，要求为 0
+    dd 0, 0; 
+gdt_code:
+    ; 1 索引描述符，为代码段描述符
+    dw memory_limit & 0xffff; 段界限的 0 - 15 位
+    dw memory_base & 0xffff; 基地址的 0 - 16 位
+    db (memory_base >> 16) & 0xff; 基地址 0 - 16 位
+    db 0b_1_00_1_1_0_1_0; 存在、dlp 为 00、代码、非依从、可读、没有被访问过
+    db 0b1_1_0_0_0000 | (memory_limit >> 16) & 0xf; 4K、32位、不是 64 位、一个无效位、段界限的 16 - 19 
+    db (memory_base >> 24) & 0xff; 基地址 24 - 31 位
+gdt_data:
+    ; 2 索引描述符，为数据段描述符
+    dw memory_limit & 0xffff; 段界限的 0 - 15 位
+    dw memory_base & 0xffff; 基地址的 0 - 16 位
+    db (memory_base >> 16) & 0xff; 基地址 0 - 16 位
+    db 0b_1_00_1_0_0_1_0; 存在、dlp 为 00、数据、向上拓展、可写、没有被访问过
+    db 0b1_1_0_0_0000 | (memory_limit >> 16) & 0xf; 4K、32位、不是 64 位、一个无效位、段界限的 16 - 19 
+    db (memory_base >> 24) & 0xff; 基地址 24 - 31 位
+gdt_end:
 
 ards_count:
     dw 0 

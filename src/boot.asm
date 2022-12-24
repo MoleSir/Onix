@@ -11,24 +11,28 @@ mov es, ax
 mov ss, ax
 mov sp, 0x7c00
 
-; 0xb8000 文本显示器的内存
-mov ax, 0xb800
-mov ds, ax
-mov byte [0], 'H'
-mov byte [2], 'e'
-mov byte [4], 'l'
-mov byte [6], 'l'
-mov byte [8], '0'
-mov byte [10], ' '
-mov byte [12], 'W'
-mov byte [14], 'o'
-mov byte [16], 'r'
-mov byte [18], 'l'
-mov byte [20], 'd'
-mov byte [22], '!'
+xchg bx, bx; bochs 的魔数断点
+
+mov si, booting
+call print
 
 ; 阻塞
 jmp $
+
+print:
+    mov ah, 0x0e
+.next:
+    mov al, [si]
+    cmp al, 0
+    jz .done
+    int 0x10
+    inc si
+    jmp .next
+.done
+    ret
+
+booting:
+    db "Booting Onix...", 10, 13, 0; 10, 13, 0 表示 '\r\n\0'
 
 ; 填充 0
 times 510 - ($ - $$) db 0

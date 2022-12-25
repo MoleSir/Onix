@@ -8,9 +8,13 @@ CFLAGS += -fno-pic # 不需要位置无关的代码 	position independent code
 CFLAGS += -Qn
 CFLAGS += -fno-asynchronous-unwind-tables
 CFLAGS += -mpreferred-stack-boundary=2
-CFLAGS += -fomit-frame-pointer
+#CFLAGS += -fomit-frame-pointer
 CFLAGS := $(strip ${CFLAGS})
 
 .PHONY: hello.s
 hello.s: hello.c
+	gcc $(CFLAGS) -S $< -o $@
+
+.PHONY: param.s
+param.s: param.c
 	gcc $(CFLAGS) -S $< -o $@

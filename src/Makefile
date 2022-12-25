@@ -60,6 +60,24 @@ test: $(BUILD)/master.img
 clean:
 	rm -rf $(BUILD)
 
-.PHNOY: bochs
+.PHONY: bochs
 bochs:$(BUILD)/master.img
-	bochs -q
+	bochs -q -f ../bochs/bochsrc
+
+.PHONY: bochsg
+bochsg:$(BUILD)/master.img
+	bochs-gdb -q -f ../bochs/bochsrc.gdb
+
+.PHONY: qemug
+qemug:$(BUILD)/master.img
+	qemu-system-i386 \
+	-s -S \
+	-m 32M \
+	-boot c \
+	-hda $<
+
+$(BUILD)/master.vmdk: $(BUILD)/master.img
+	qemu-img convert -O vmdk $< $@
+
+.PHONY:vmdk
+vmdk: $(BUILD)/master.vmdk

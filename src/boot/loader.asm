@@ -91,7 +91,6 @@ error:
 
 [bits 32]
 protect_mode:
-    xchg bx, bx
     mov ax, data_selector
     mov ds, ax
     mov es, ax

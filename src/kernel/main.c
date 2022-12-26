@@ -3,17 +3,16 @@
 #include <onix/io.h>
 #include <onix/string.h>
 #include <onix/console.h>
-
-char message[] = "hello onix!!!\n";
+#include <onix/printk.h>
 
 void kernel_init()
 {
     console_init();
 
-    while (true)
+    int cnt = 30;
+    while (cnt--)
     {
-        console_write(message, sizeof(message) - 1);
+        printk("hello onix %#010x\n", cnt);
     }
-
     return;
 }

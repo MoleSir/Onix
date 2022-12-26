@@ -37,7 +37,7 @@ static u32 screen;
 static u32 pos;
 
 // 记录当前光标的坐标 (WIDTH, HEIGHT) 中的某个坐标
-static u16 x, y;
+static u32 x, y;
 
 // 字符样式
 static u8 attr = 7;
@@ -113,7 +113,7 @@ void console_clear()
     set_screen();
 
     u16* ptr = (u16*)MEM_BASE;
-    while (ptr < MEM_END)
+    while (ptr < (u16* )MEM_END)
     {
         *(ptr++) = erase;
     }
@@ -156,7 +156,7 @@ static void scroll_up()
     }
     else
     {
-        memcpy(MEM_BASE, screen, SCR_SIZE);
+        memcpy((void*)MEM_BASE, (void*)screen, SCR_SIZE);
         pos -= (screen - MEM_BASE);
         screen = MEM_BASE;
     }

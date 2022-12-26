@@ -4,7 +4,9 @@
 
 #define EOF -1 // END OF FILE
 
-#define NULL 0 // NULL pointer
+#define EOS '\0' // end of string
+
+#define NULL ((void *)0) // NULL pointer
 
 #define bool _Bool
 #define true 1

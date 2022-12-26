@@ -12,7 +12,7 @@
 #define true 1
 #define false 0
 
-#define _packed __attribute((_packed)) // 定义特殊结构体
+#define _packed __attribute__((packed)) // 定义特殊结构体
 
 typedef unsigned int size_t;
 

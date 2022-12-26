@@ -12,6 +12,8 @@ void kernel_init()
 {
     console_init();
 
+    printk("%d\n%d", sizeof(descriptor_t), sizeof(pointer_t));
+
     gdt_init();
 
     return;

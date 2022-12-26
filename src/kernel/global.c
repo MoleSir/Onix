@@ -15,13 +15,13 @@ void gdt_init()
     asm volatile("sgdt gdt_ptr");
 
     // 拷贝到 gdt 
-    memcpy(&gdt, (void*)gdt_ptr.base, gdt_ptr.limit + 1);
+    memcpy(gdt, (void*)gdt_ptr.base, gdt_ptr.limit + 1);
 
     // 更新 gdt_ptr 的内容，因为 gdt 已经被拷贝了
     gdt_ptr.base = (u32)&gdt;
     gdt_ptr.limit = sizeof(gdt) - 1;
     BMB;
     // 重新设置 gdt_ptr 给 CPU
-    asm volatile("lgdt gdt_ptr\n");
+    asm volatile("lgdt gdt_ptr");
     BMB;
 }

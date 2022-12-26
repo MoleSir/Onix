@@ -94,12 +94,12 @@ void* memset(void* dest, int ch, size_t count)
     return dest;
 }
 
-void* memcpy(void* dest, const void* src, size_t count)
+void *memcpy(void *dest, const void *src, size_t count)
 {
-    char* ptr = dest;
+    char *ptr = dest;
     while (count--)
     {
-        *(ptr++) = *((char*)(src++));
+        *ptr++ = *((char *)(src++));
     }
     return dest;
 }

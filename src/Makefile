@@ -38,6 +38,8 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/assert.o \
 	$(BUILD)/kernel/debug.o \
 	$(BUILD)/kernel/global.o \
+	$(BUILD)/kernel/schedule.o \
+	$(BUILD)/kernel/task.o \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	

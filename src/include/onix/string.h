@@ -1,5 +1,5 @@
-#ifndef __STRING_HH__
-#define __STRING_HH__
+#ifndef __ONIX_STRING_HH__
+#define __ONIX_STRING_HH__
 
 #include <onix/types.h>
 

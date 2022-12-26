@@ -33,6 +33,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/start.o \
 	$(BUILD)/kernel/main.o \
 	$(BUILD)/kernel/io.o \
+	$(BUILD)/kernel/console.o \
 	$(BUILD)/lib/string.o \
 	
 	$(shell mkdir -p $(dir $@))
@@ -75,6 +76,13 @@ bochsg:$(BUILD)/master.img
 qemug:$(BUILD)/master.img
 	qemu-system-i386 \
 	-s -S \
+	-m 32M \
+	-boot c \
+	-hda $<
+
+.PHONY: qemu
+qemu:$(BUILD)/master.img
+	qemu-system-i386 \
 	-m 32M \
 	-boot c \
 	-hda $<

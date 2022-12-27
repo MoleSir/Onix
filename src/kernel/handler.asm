@@ -33,9 +33,6 @@ interrupt_entry:
     ; 调用中断处理函数，handler_table 中存储了中断处理函数的指针
     call [handler_table + eax * 4]
 
-global interrupt_exit
-interrupt_exit:
-
     ; 对应 push eax，调用结束恢复栈
     add esp, 4
 

@@ -62,16 +62,29 @@ void send_eoi(int vector)
     }
 }
 
+extern void schedule();
+
 void default_handler(int vector)
 {
     send_eoi(vector);
-    DEBUGK("[%x] default interrupt called...\n", vector);
+    schedule();
 }
 
-void exception_handler(int vector)
+void exception_handler(
+    int vector,
+    u32 edi, u32 esi, u32 ebp, u32 esp,
+    u32 ebx, u32 edx, u32 ecx, u32 eax,
+    u32 gs, u32 fs, u32 es, u32 ds,
+    u32 vector0, u32 error, u32 eip, u32 cs, u32 eflags)
 {
-    printk("Exception: [0x%02X] %s \n", vector, messages[vector]);    
-    
+    printk("\nEXCEPTION : %s \n", messages[vector]);
+    printk("   VECTOR : 0x%02X\n", vector);
+    printk("    ERROR : 0x%08X\n", error);
+    printk("   EFLAGS : 0x%08X\n", eflags);
+    printk("       CS : 0x%02X\n", cs);
+    printk("      EIP : 0x%08X\n", eip);
+    printk("      ESP : 0x%08X\n", esp);
+    // 阻塞
     hang();
 }
 

@@ -14,6 +14,8 @@
 
 #define _packed __attribute__((packed)) // 定义特殊结构体
 
+#define _ofp __attribute__((optimize("omit-frame-pointer")))
+
 typedef unsigned int size_t;
 
 typedef char int8;

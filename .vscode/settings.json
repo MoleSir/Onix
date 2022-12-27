@@ -3,6 +3,7 @@
         "types.h": "c",
         "debug.h": "c",
         "assert.h": "c",
-        "console.h": "c"
+        "console.h": "c",
+        "stdlib.h": "c"
     }
 }

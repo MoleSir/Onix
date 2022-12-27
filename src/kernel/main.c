@@ -1,7 +1,7 @@
 #include <onix/onix.h>
 #include <onix/types.h>
 #include <onix/io.h>
-#include <string.h>
+#include <onix/string.h>
 #include <onix/console.h>
 #include <onix/printk.h>
 #include <onix/assert.h>
@@ -9,7 +9,7 @@
 #include <onix/global.h>
 #include <onix/task.h>
 #include <onix/interrupt.h>
-#include <stdlib.h>
+#include <onix/stdlib.h>
 
 void kernel_init()
 {
@@ -17,6 +17,8 @@ void kernel_init()
     gdt_init();
     interrupt_init();
     
+    BMB;
+
     asm volatile(
         "sti\n"
         "movl %eax, %eax");

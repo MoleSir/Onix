@@ -1,9 +1,13 @@
 #include <onix/interrupt.h>
 #include <onix/global.h>
 #include <onix/debug.h>
+#include <onix/stdlib.h>
 #include <onix/printk.h>
+#include <onix/io.h>
+#include <onix/assert.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
+// #define LOGK(fmt, args...)
 
 #define ENTRY_SIZE 0x30
 
@@ -11,7 +15,7 @@
 #define PIC_M_DATA 0x21 // 主片的数据端口
 #define PIC_S_CTRL 0xa0 // 从片的控制端口
 #define PIC_S_DATA 0xa1 // 从片的数据端口
-#define PIC_EOI 0x20 // 通知中断控制器中断结束
+#define PIC_EOI 0x20    // 通知中断控制器中断结束
 
 gate_t idt[IDT_SIZE];
 pointer_t idt_ptr;
@@ -66,31 +70,28 @@ void default_handler(int vector)
 
 void exception_handler(int vector)
 {
-    char* message = NULL;
-    if (vector < 22)
-        message = messages[vector];
-    else 
-        message = message[15];
-
-    printk("Exception: [0x%02X] %s \n", vector, message);    
-    while(true) ;
+    printk("Exception: [0x%02X] %s \n", vector, messages[vector]);    
+    
+    hang();
 }
 
 // 初始化中断控制器
-void pic_init()
+void pic_init() 
 {
-    outb(PIC_M_CTRL, 0b00010001); // ICW1: 边沿触发, 级联 8259, 需要ICW4.
-    outb(PIC_M_DATA, 0x20);       // ICW2: 起始中断向量号 0x20
-    outb(PIC_M_DATA, 0b00000100); // ICW3: IR2接从片.
-    outb(PIC_M_DATA, 0b00000001); // ICW4: 8086模式, 正常EOI
+    outb(PIC_M_CTRL, 0x11);
+    outb(PIC_S_CTRL, 0x11);
 
-    outb(PIC_S_CTRL, 0b00010001); // ICW1: 边沿触发, 级联 8259, 需要ICW4.
-    outb(PIC_S_DATA, 0x28);       // ICW2: 起始中断向量号 0x28
-    outb(PIC_S_DATA, 2);          // ICW3: 设置从片连接到主片的 IR2 引脚
-    outb(PIC_S_DATA, 0b00000001); // ICW4: 8086模式, 正常EOI
+    outb(PIC_M_DATA, 0x20);
+    outb(PIC_S_DATA, 0x28);
 
-    outb(PIC_M_DATA, 0b11111111); // 关闭所有中断
-    outb(PIC_S_DATA, 0b11111111); // 关闭所有中断
+    outb(PIC_M_DATA, 0x04);
+    outb(PIC_S_DATA, 0x02);
+
+    outb(PIC_M_DATA, 0x01);
+    outb(PIC_S_DATA, 0x01);
+
+    outb(PIC_M_DATA, 0b11111110);
+    outb(PIC_S_DATA, 0b11111111);
 }
 
 // 初始化中断描述符，和中断处理函数数组

@@ -4,6 +4,11 @@
         "debug.h": "c",
         "assert.h": "c",
         "console.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "printk.h": "c",
+        "stdio.h": "c",
+        "stdarg.h": "c",
+        "global.h": "c",
+        "task.h": "c"
     }
 }

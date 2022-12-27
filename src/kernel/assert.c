@@ -1,8 +1,8 @@
 #include <onix/assert.h>
 #include <onix/types.h>
 #include <onix/printk.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include <onix/stdarg.h>
+#include <onix/stdio.h>
 
 static u8 buf[1024];
 

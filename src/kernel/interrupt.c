@@ -1,7 +1,7 @@
 #include <onix/interrupt.h>
 #include <onix/global.h>
 #include <onix/debug.h>
-#include <onix/stdlib.h>
+#include <stdlib.h>
 #include <onix/printk.h>
 #include <onix/io.h>
 #include <onix/assert.h>

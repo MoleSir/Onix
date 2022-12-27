@@ -1,6 +1,6 @@
 #include <onix/debug.h>
-#include <onix/stdarg.h>
-#include <onix/stdio.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <onix/printk.h>
 
 static char buf[1024];

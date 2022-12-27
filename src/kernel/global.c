@@ -1,5 +1,5 @@
 #include <onix/global.h>
-#include <onix/string.h>
+#include <string.h>
 #include <onix/debug.h>
 
 descriptor_t gdt[GDT_SIZE];

@@ -1,7 +1,7 @@
 #include <onix/onix.h>
 #include <onix/types.h>
 #include <onix/io.h>
-#include <onix/string.h>
+#include <string.h>
 #include <onix/console.h>
 #include <onix/printk.h>
 #include <onix/assert.h>
@@ -9,7 +9,7 @@
 #include <onix/global.h>
 #include <onix/task.h>
 #include <onix/interrupt.h>
-#include <onix/stdlib.h>
+#include <stdlib.h>
 
 void kernel_init()
 {

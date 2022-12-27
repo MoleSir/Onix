@@ -9,6 +9,7 @@
         "stdio.h": "c",
         "stdarg.h": "c",
         "global.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "string.h": "c"
     }
 }

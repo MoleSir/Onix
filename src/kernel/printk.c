@@ -1,6 +1,6 @@
-#include <onix/stdarg.h>
+#include <stdarg.h>
 #include <onix/console.h>
-#include <onix/stdio.h>
+#include <stdio.h>
 
 static char buf[1024];
 

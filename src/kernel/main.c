@@ -15,12 +15,9 @@ void kernel_init()
     // clock_init();
     // time_init();
     // rtc_init();
+
+    memory_test();
     
-    BMB;
-
-    char* ptr = (char*)(0x100000 * 20);
-    *ptr = 'a';
-
     asm volatile("sti");
     hang();
 }

@@ -183,7 +183,7 @@ void console_write(char* buf, u32 count)
         case ASCII_NUL:
             break;
         case ASCII_BEL:
-            // TODO '\a'
+            start_beep();
             break;
         case ASCII_BS:
             command_bs();

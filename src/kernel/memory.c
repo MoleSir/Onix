@@ -74,7 +74,7 @@ static u32 start_page = 0;  // 可分配物理内存起始位置
 static u8* memory_map;     // 物理内存数组，每个字节来管理一个物理页
 static u32 memory_map_pages;// 物理内存数组占用的页数量
 
-memory_map_init()
+void memory_map_init()
 {
     // 初始化物理内存数组，以字节为单位
     memory_map = (u8*)memory_base;
@@ -143,12 +143,80 @@ static void put_page(u32 addr)
     LOGK("PUT page 0x%p\n", addr);
 }
 
-void memory_test()
+// 获取 cr3 寄存器
+u32 get_cr3()
 {
-    u32 pages[10];
-    for (size_t i = 0; i < 10; ++i)
-        pages[i] = get_page();
+    asm volatile("movl %cr3, %eax\n");
+}
 
-    for (size_t i = 0; i < 10; ++i)
-        put_page(pages[i]);
+// 设置 cr3 寄存器
+void set_cr3(u32 pde)
+{
+    ASSERT_PAGE(pde);
+    asm volatile("movl %%eax, %%cr3\n" ::"a"(pde));
+}
+
+// 将 cr00 寄存器最高位 PE 设置位 1，启动分页
+static void enable_page()
+{
+    // 0b1000_0000_0000_0000_0000_0000_0000_0000
+    asm volatile(
+        "movl %cr0, %eax\n"
+        "orl $0x80000000, %eax\n"
+        "movl %eax, %cr0\n");
+}
+
+// 初始化页表项
+static void entry_init(page_entry_t* entry, u32 index)
+{
+    // 首先全部清零
+    *(u32*)entry = 0;
+    entry->present = 1;
+    entry->write = 1;
+    entry->user = 1;
+    // 这个页表项指向物理内存的 index 号页面
+    entry->index = index;
+}
+
+// 内核页目录，这个页面保存页目录
+#define KERNEL_PAGE_DIR 0x200000
+
+// 内核页表
+#define KERNEL_PAGE_ENTRY 0x201000
+
+// 内存映射初始化
+void mapping_init()
+{
+    // 将 KERNEL_PAGE_DIR 的位置视为 page_entry_t，并且设置为 0
+    // PS: pde -> page diretory entry，表示页目录项，所以 KERNEL_PAGE_DIR 所在的这一页就作为系统的页目录
+    page_entry_t* pde = (page_entry_t*)KERNEL_PAGE_DIR;
+    memset(pde, 0, PAGE_SIZE);
+
+    // 将最开始的一个页目录项指向 KERNEL_PAGE_ENTRY
+    entry_init(&pde[0], IDX(KERNEL_PAGE_ENTRY));
+
+    // 将 KERNEL_PAGE_ENTRY 的位置作为 page_entry_t
+    // PS: pte -> page table entry，表示页表项，所以这是张页表，而且是系统中的第一张页表，
+    // 起始地址保存在系统页目录的第 0 个表项
+    page_entry_t* pte = (page_entry_t*)KERNEL_PAGE_ENTRY;
+    page_entry_t* entry;
+    // 把 pte 作为页表的起始地址，初始化这个页面中 1024 个页表项
+    // 要把前 1M -> 1024 个页面映射到一一映射到此页表的 1024 个表项
+    for (size_t tidx = 0; tidx < 1024; tidx++)
+    {
+        entry = &pte[tidx];
+        // 将这个页表第 i 个表项指向的整个内存的第 i 个页面
+        entry_init(entry, tidx);
+        memory_map[tidx] = 1;
+    }
+
+    BMB;
+
+    // 设置 ccr3 
+    set_cr3((u32)pde);
+
+    BMB;
+
+    // 开启分页有效
+    enable_page();
 }

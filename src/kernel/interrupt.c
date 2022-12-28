@@ -62,14 +62,42 @@ void send_eoi(int vector)
     }
 }
 
-extern void schedule();
+// 对 irq 号外中断设置处理函数
+void set_interrupt_handler(u32 irq, handler_t handler)
+{
+    assert(irq >= 0 && irq < 16);
+    handler_table[IRQ_MASTER_NR + irq] = handler;
+}
 
+// 启动或关闭第 irq 号外中断
+void set_interrupt_mask(u32 irq, bool enable)
+{
+    assert(irq >= 0 && irq < 16);
+    u16 port;
+    // 端口号小于 8 是主片控制的中断
+    if (irq < 8)
+        port = PIC_M_DATA;
+    // 大于 8 是从片控制的中断
+    else
+    {
+        port = PIC_S_DATA;
+        irq -= 8;
+    }
+    // 开启或关闭对应的端口，即使能或失能对应的时钟中断（0 有效）
+    if (enable)
+        outb(port, inb(port) & (~(1 << irq)));
+    else
+        outb(port, inb(port) | (1 << irq));
+}
+
+// 默认外中断处理函数
 void default_handler(int vector)
 {
     send_eoi(vector);
-    schedule();
+    DEBUGK("[%x] default interrupt called...\n", vector);
 }
 
+// 默认异常处理函数
 void exception_handler(
     int vector,
     u32 edi, u32 esi, u32 ebp, u32 esp,
@@ -103,7 +131,8 @@ void pic_init()
     outb(PIC_M_DATA, 0x01);
     outb(PIC_S_DATA, 0x01);
 
-    outb(PIC_M_DATA, 0b11111110);
+    // 默认所有 16 个外中断全部关闭，后面有需要再打开
+    outb(PIC_M_DATA, 0b11111111);
     outb(PIC_S_DATA, 0b11111111);
 }
 

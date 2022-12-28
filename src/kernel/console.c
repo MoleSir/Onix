@@ -144,22 +144,20 @@ static void command_cr()
 // 向下滚屏
 static void scroll_up()
 {
-    if (screen + SCR_SIZE + ROW_SIZE < MEM_END)
-    {
-        u16* ptr = (u16 *)(screen + SCR_SIZE);
-        for (size_t i = 0; i < WIDTH; ++i)
-        {
-            *(ptr++) = erase;
-        }
-        screen += ROW_SIZE;
-        pos += ROW_SIZE;
-    }
-    else
+    if (screen + SCR_SIZE + ROW_SIZE >= MEM_END)
     {
         memcpy((void*)MEM_BASE, (void*)screen, SCR_SIZE);
         pos -= (screen - MEM_BASE);
         screen = MEM_BASE;
     }
+    u16* ptr = (u16 *)(screen + SCR_SIZE);
+    for (size_t i = 0; i < WIDTH; ++i)
+    {
+        *(ptr++) = erase;
+    }
+    screen += ROW_SIZE;
+    pos += ROW_SIZE;
+    
     set_screen();
 }
 

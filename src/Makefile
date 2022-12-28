@@ -44,6 +44,8 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/handler.o \
 	$(BUILD)/kernel/clock.o \
 	$(BUILD)/kernel/time.o \
+	$(BUILD)/kernel/memory.o \
+	$(BUILD)/kernel/rtc.o \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \
@@ -87,12 +89,13 @@ bochsg:$(BUILD)/master.img
 .PHONY: qemug
 qemug:$(BUILD)/master.img
 	qemu-system-i386 \
-	-s -S \
 	-m 32M \
+	-s -S \
 	-boot c \
 	-drive file=$<,if=ide,index=0,media=disk,format=raw \
 	-audiodev pa,id=hda \
 	-machine pcspk-audiodev=hda \
+	-rtc base=localtime \
 
 .PHONY: qemu
 qemu:$(BUILD)/master.img
@@ -102,6 +105,7 @@ qemu:$(BUILD)/master.img
 	-drive file=$<,if=ide,index=0,media=disk,format=raw \
 	-audiodev pa,id=hda \
 	-machine pcspk-audiodev=hda \
+	-rtc base=localtime \
 
 $(BUILD)/master.vmdk: $(BUILD)/master.img
 	qemu-img convert -O vmdk $< $@

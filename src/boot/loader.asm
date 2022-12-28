@@ -31,7 +31,7 @@ detect_memory:
     add di, cx
 
     ; 将结构体数量加 1
-    inc word [ards_count]
+    inc dword [ards_count]
 
     ; 如果 ebx 是 0，表示检测结束
     cmp ebx, 0
@@ -105,6 +105,9 @@ protect_mode:
     mov ecx, 10; 读取扇区数量
     mov bl, 200; 起始扇区位置
     call read_disk
+
+    mov eax, 0x20220205 ; 内核魔数
+    mov ebx, ards_count 
 
     ; 跳转到内核
     jmp dword code_selector:0x10000
@@ -218,5 +221,5 @@ gdt_data:
 gdt_end:
 
 ards_count:
-    dw 0 
+    dd 0 
 ards_buffer:

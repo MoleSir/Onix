@@ -8,9 +8,11 @@
 
 #define NULL ((void *)0) // NULL pointer
 
+#ifndef __cplusplus
 #define bool _Bool
 #define true 1
 #define false 0
+#endif
 
 #define _packed __attribute__((packed)) // 定义特殊结构体
 

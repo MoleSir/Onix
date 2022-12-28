@@ -1,5 +1,6 @@
 #include <onix/time.h>
 #include <onix/debug.h>
+#include <onix/rtc.h>
 #include <stdlib.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
@@ -22,12 +23,6 @@
 #define HOUR (60 * MINUTE) // 每小时的秒数
 #define DAY (24 * HOUR)    // 每天的秒数
 #define YEAR (365 * DAY)   // 每年的秒数，以 365 天算
-
-u8 cmos_read(u8 addr)
-{
-    outb(CMOS_ADDR, CMOS_NMI | addr);
-    return inb(CMOS_DATA);
-}
 
 // 每个月开始时的已经过去天数
 static int month[13] = {

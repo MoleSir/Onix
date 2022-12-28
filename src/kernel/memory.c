@@ -274,39 +274,3 @@ static void flush_tlb(u32 vaddr)
     asm volatile("invlpg (%0)" ::"r"(vaddr)
                  : "memory");
 }
-
-void memory_test()
-{
-    // 将 20M-> 0x1400000 内存映射到 64M 0x4000000 的位置
-    BMB;
-    u32 vaddr = 0x4000000;
-    u32 paddr = 0x1400000;
-    u32 table = 0x900000;
-
-    page_entry_t* pde = get_pde();
-    page_entry_t* dentry = &pde[DIDX(vaddr)];
-    entry_init(dentry, IDX(table));
-
-    // 不可以直接用 table 的值，因为这个是物理地址，在程序中不能直接使用
-    page_entry_t* pte = get_pte(vaddr);
-    page_entry_t* tentry = &pte[TIDX(vaddr)];
-
-    entry_init(tentry, IDX(paddr));
-
-    BMB;
-
-    char* ptr = (char*)(0x4000000);
-    ptr[0] = 'a';
-
-    BMB;
-
-    // 现在 0x4000000 的虚拟地址对应 物理地址 0x1500000
-    entry_init(tentry, IDX(0x1500000));
-    flush_tlb(vaddr);
-
-    BMB;
-
-    ptr[2] = 'c';
-
-    BMB;
-}

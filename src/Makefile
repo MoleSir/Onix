@@ -49,7 +49,8 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \
-	
+	$(BUILD)/ds/bitmap.o \
+
 	$(shell mkdir -p $(dir $@))
 	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRYPOINT)
 
@@ -87,11 +88,11 @@ clean:
 
 .PHONY: bochs
 bochs:$(BUILD)/master.img
-	bochs -q -f ../bochs/bochsrc
+	bochs -q -f ../bochs/bochsrc -unlock
 
 .PHONY: bochsg
 bochsg:$(BUILD)/master.img
-	bochs-gdb -q -f ../bochs/bochsrc.gdb
+	bochs-gdb -q -f ../bochs/bochsrc.gdb -unlock
 
 .PHONY: qemug
 qemug:$(BUILD)/master.img

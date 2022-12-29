@@ -6,6 +6,7 @@
 #include <onix/memory.h>
 #include <onix/interrupt.h>
 #include <onix/assert.h>
+#include <onix/syscall.h>
 #include <ds/bitmap.h>
 #include <string.h>
 
@@ -69,6 +70,9 @@ task_t* running_task()
 // 调度
 void schedule()
 {
+    // 不可中断
+    assert(!get_interrupt_state());
+    
     // 获取当前、与下一关任务
     task_t* current = running_task();
     task_t* next = task_search(TASK_REDAY);
@@ -136,25 +140,39 @@ static void task_setup()
     memset(task_table, 0, sizeof(task_table));
 }
 
+void task_yield()
+{
+    schedule();
+}
+
 u32 thread_a()
 {
     set_interrupt_state(true);
     while (true)
+    {
         printk("A");
+        yield();
+    }
 }
 
 u32 thread_b()
 {
     set_interrupt_state(true);
     while (true)
+    {
         printk("B");
+        yield();
+    }
 }
 
 u32 thread_c()
 {
     set_interrupt_state(true);
     while (true)
+    {
         printk("C");
+        yield();
+    }
 }
 
 // 任务初始化

@@ -1,6 +1,7 @@
 #include <onix/interrupt.h>
 #include <onix/assert.h>
 #include <onix/debug.h>
+#include <onix/syscall.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -25,12 +26,15 @@ static u32 sys_test()
     return 255;
 }
 
+extern task_yield();
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
     {
         syscall_table[i] = sys_default;
     }
-    syscall_table[0] = sys_test;
-}
 
+    syscall_table[SYS_NR_TEST] = sys_test;
+    syscall_table[SYS_NR_YIELD] = task_yield;
+}

@@ -80,6 +80,9 @@ void schedule()
     if (current->state == TASK_RUNNING)
         current->state = TASK_REDAY;
     
+    if (!current->ticks)
+        current->ticks = current->priority; 
+
     // 切换下一关任务状态
     next->state = TASK_RUNNING;
     if (next == current)

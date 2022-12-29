@@ -249,8 +249,6 @@ void mapping_init()
     // 设置 cr3 
     set_cr3((u32)pde);
 
-    BMB;
-
     // 开启分页有效
     enable_page();
 }

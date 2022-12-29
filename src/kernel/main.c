@@ -9,6 +9,7 @@ extern void rtc_init();
 extern void memory_map_init();
 extern void mapping_init();
 extern void task_init();
+extern void syscall_init();
 extern void hang();
 
 void kernel_init()
@@ -22,7 +23,8 @@ void kernel_init()
     // rtc_init(); 
 
     task_init();
-    asm volatile("sti\n");
+    syscall_init();
+    // asm volatile("sti\n");
 
-    hang();
+    // hang();
 }

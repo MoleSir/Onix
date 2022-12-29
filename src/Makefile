@@ -40,6 +40,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/global.o \
 	$(BUILD)/kernel/schedule.o \
 	$(BUILD)/kernel/task.o \
+	$(BUILD)/kernel/gate.o \
 	$(BUILD)/kernel/interrupt.o \
 	$(BUILD)/kernel/handler.o \
 	$(BUILD)/kernel/clock.o \

@@ -136,6 +136,38 @@ void pic_init()
     outb(PIC_S_DATA, 0b11111111);
 }
 
+// 清除 IF 位，返回设置之前的值
+bool interrupt_disable()
+{
+    asm volatile(
+        "pushfl\n"          // 将当前的 eflags 压入栈中
+        "cli\n"             // 清除 IF 位，此时外中断被屏蔽
+        "popl %eax\n"       // 将刚才压入的 eflags 弹出到 eax
+        "shrl $9, %eax\n"   // 将 eax 右移 9 位，得到 IF 
+        "andl $1, %eax\n"   // 只需要 IF，其他位设置为 0
+    );
+}
+
+// 获得 IF 位
+bool get_interrupt_state()
+{
+    asm volatile(
+        "pushfl\n"          // 将当前的 eflags 压入栈中
+        "popl %eax\n"       // 入栈的 eflags 进入 eax
+        "shrl $9, %eax\n"   // 将 eax 右移 9 位，得到 IF 
+        "andl $1, %eax\n"   // 只需要 IF，其他位设置为 0
+    );
+}
+
+// 设置 IF 位
+void set_interrupt_state(bool state)
+{
+    if (state)
+        asm volatile("sti\n");
+    else
+        asm volatile("cli\n");
+}
+
 // 初始化中断描述符，和中断处理函数数组
 void idt_init()
 {

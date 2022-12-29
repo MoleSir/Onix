@@ -10,6 +10,7 @@
         "stdarg.h": "c",
         "global.h": "c",
         "task.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "interrupt.h": "c"
     }
 }

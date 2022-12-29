@@ -3,8 +3,8 @@
  * Wirzenius wrote this portably, Torvalds fucked it up :-)
  */
 
-#include <onix/stdarg.h>
-#include <onix/string.h>
+#include <stdarg.h>
+#include <string.h>
 #include <onix/assert.h>
 
 #define ZEROPAD 1  // 填充零

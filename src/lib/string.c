@@ -1,5 +1,5 @@
-#include <onix/string.h>
-
+#include <onix/types.h>
+#include <string.h>
 
 char* strcpy(char* dest, const char* src)
 {

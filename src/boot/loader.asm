@@ -98,7 +98,7 @@ protect_mode:
     mov gs, ax
     mov ss, ax; 初始化段寄存器
 
-    mov esp, 0x10000; 修改栈顶
+    mov esp, 0x10000; 修改栈顶，从 1M 开始
 
     ; 读取内核代码到内存 0x10000 处，其位于磁盘的第 10 个扇区，连续 200 个
     mov edi, 0x10000; 读取的目标内存

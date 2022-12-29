@@ -21,7 +21,16 @@ typedef struct page_entry_t
     u32 index : 20;  // 页索引
 } _packed page_entry_t;
 
+// 获取 cr3 寄存器
 u32 get_cr3();
+
+// 设置 cr3 寄存器
 void set_cr3(u32 pde);
+
+// 分配 count 个连续的内核页
+u32 alloc_kpage(u32 page);
+
+// 释放 count 个连续的内核页
+void free_kpage(u32 vaddr, u32 count);
 
 #endif

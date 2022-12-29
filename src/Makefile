@@ -52,6 +52,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \
 	$(BUILD)/ds/bitmap.o \
+	$(BUILD)/ds/list.o \
 
 	$(shell mkdir -p $(dir $@))
 	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRYPOINT)

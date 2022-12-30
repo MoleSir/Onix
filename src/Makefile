@@ -48,6 +48,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/memory.o \
 	$(BUILD)/kernel/rtc.o \
 	$(BUILD)/kernel/syscall.o \
+	$(BUILD)/kernel/thread.o \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \

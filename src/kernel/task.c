@@ -17,6 +17,7 @@ extern void task_switch(task_t* next);
 #define NR_TASKS 64
 static task_t* task_table[NR_TASKS];
 static list_t block_list;
+static task_t* idle_task;
 
 // 获取任务数组第一个空闲位置，并且构建一个返回
 static task_t* get_free_task()
@@ -55,6 +56,10 @@ static task_t* task_search(task_state_t state)
         if (task == NULL || task->ticks < ptr->ticks || ptr->jiffies < task->jiffies)
             task = ptr;
     }
+
+    // 所有任务都阻塞了！！！运行空闲进行
+    if (task == NULL && state == TASK_REDAY)
+        task = idle_task;
     
     return task;
 }
@@ -179,43 +184,16 @@ void task_unblock(task_t* task)
     task->state = TASK_REDAY;
 }
 
-u32 thread_a()
-{
-    set_interrupt_state(true);
-    while (true)
-    {
-        printk("A");
-        test();
-    }
-}
-
-u32 thread_b()
-{
-    set_interrupt_state(true);
-    while (true)
-    {
-        printk("B");
-        test();
-    }
-}
-
-u32 thread_c()
-{
-    set_interrupt_state(true);
-    while (true)
-    {
-        printk("C");
-        test();
-    }
-}
+extern void idle_thread();
+extern void init_thread();
 
 // 任务初始化
 void task_init()
 {
+    list_init(&block_list);
+
     task_setup();
 
-    list_init(&block_list);
-    task_create(thread_a, "thread a", 5, KERNEL_USER);
-    task_create(thread_b, "thread b", 5, KERNEL_USER);
-    task_create(thread_c, "thread c", 5, KERNEL_USER);
+    idle_task = task_create(idle_thread, "idle", 1, KERNEL_USER);
+    task_create(init_thread, "init", 5, NORMAL_USER);
 }

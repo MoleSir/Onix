@@ -3,10 +3,24 @@
 static _inline u32 _syscall0(u32 nr)
 {
     u32 ret;
+    // 执行 int 0x80 之前，把系统调用号放入 eax 寄存器
+    // 最后的返回值放入 ret
     asm volatile(
         "int $0x80\n"
         : "=a"(ret)
         : "a"(nr));
+    return ret;
+}
+
+static _inline u32 _syscall1(u32 nr, u32 arg)
+{
+    u32 ret;
+    // 执行 int 0x80 之前，把系统调用号放入 eax 寄存器，参数传入 ebx 寄存器
+    // 最后的返回值放入 ret
+    asm volatile(
+        "int $0x80\n"
+        : "=a"(ret)
+        : "a"(nr), "b"(arg));
     return ret;
 }
 
@@ -18,4 +32,9 @@ u32 test()
 void yield()
 {
     _syscall0(SYS_NR_YIELD);
+}
+
+void sleep(u32 ms)
+{
+    _syscall1(SYS_NR_SLEEP, ms);
 }

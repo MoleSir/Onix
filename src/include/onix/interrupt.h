@@ -23,7 +23,7 @@
 #define IRQ_MASTER_NR 0x20 // 主片起始向量号
 #define IRQ_SLAVE_NR 0x28  // 从片起始向量号
 
-typedef void (*handler_t)(int);
+typedef u32 (*handler_t)(int);
 
 typedef struct gate_t
 {

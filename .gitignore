@@ -7,7 +7,9 @@
 *.zst
 *.gz
 *.vmdk
+*.log
 
+build
 bochs/src
 bochs/pkg
 token.txt

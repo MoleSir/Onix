@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ds/bitmap.h>
+#include <onix/multiboot2.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -46,45 +47,78 @@ static u32 free_pages = 0;     // 空闲内存页数量
 // 内存初始化
 void memory_init(u32 magic, u32 addr)
 {
-    u32 count;
-    ards_t* ptr;
+    u32 count = 0;
 
-    // 如果是 onix loader 进入
-    if (magic != ONIX_MAGIC)
-        panic("Memory init magic unknow 0x%p\n", magic);
-
-    count = *((u32*)addr);
-    // loader.asm 中，定义的，ards_count 下面的内存就是保存 ards 数组的位置
-    ptr = (ards_t*)(addr + 4);
-
-    for (size_t i = 0; i < count; ++i, ++ptr)
+    // 如果是 onix loader 进入的内核
+    if (magic == ONIX_MAGIC)
     {
-        LOGK("Memeory base 0x%p\n", (u32)(ptr->base));
-        LOGK("Memory size 0x%p\n", (u32)(ptr->size));
-        LOGK("Memory type 0x%p\n", (u32)(ptr->type));
-        if (ptr->type == ZONE_VALID && ptr->size > memory_size)
+        count = *(u32 *)addr;
+        ards_t *ptr = (ards_t *)(addr + 4);
+
+        for (size_t i = 0; i < count; i++, ptr++)
         {
-            memory_base = (u32)(ptr->base);
-            memory_size = (u32)(ptr->size);
+            LOGK("Memory base 0x%p size 0x%p type %d\n",
+                 (u32)ptr->base, (u32)ptr->size, (u32)ptr->type);
+            if (ptr->type == ZONE_VALID && ptr->size > memory_size)
+            {
+                memory_base = (u32)ptr->base;
+                memory_size = (u32)ptr->size;
+            }
         }
+    }
+    // 如果是 multiboot2 进入的内核
+    else if (magic == MULTIBOOT2_MAGIC)
+    {
+        u32 size = *(unsigned int *)addr;
+        multi_tag_t *tag = (multi_tag_t *)(addr + 8);
+
+        LOGK("Announced mbi size 0x%x\n", size);
+        while (tag->type != MULTIBOOT_TAG_TYPE_END)
+        {
+            if (tag->type == MULTIBOOT_TAG_TYPE_MMAP)
+                break;
+            // 下一个 tag 对齐到了 8 字节
+            tag = (multi_tag_t *)((u32)tag + ((tag->size + 7) & ~7));
+        }
+
+        multi_tag_mmap_t *mtag = (multi_tag_mmap_t *)tag;
+        multi_mmap_entry_t *entry = mtag->entries;
+        while ((u32)entry < (u32)tag + tag->size)
+        {
+            LOGK("Memory base 0x%p size 0x%p type %d\n",
+                 (u32)entry->addr, (u32)entry->len, (u32)entry->type);
+            count++;
+            if (entry->type == ZONE_VALID && entry->len > memory_size)
+            {
+                memory_base = (u32)entry->addr;
+                memory_size = (u32)entry->len;
+            }
+            entry = (multi_mmap_entry_t *)((u32)entry + mtag->entry_size);
+        }
+    }
+    else
+    {
+        panic("Memory init magic unknown 0x%p\n", magic);
     }
 
     LOGK("ARDS count %d\n", count);
-    LOGK("Memeory base 0x%p\n", (u32)memory_base);
+    LOGK("Memory base 0x%p\n", (u32)memory_base);
     LOGK("Memory size 0x%p\n", (u32)memory_size);
 
-    assert(memory_base == MEMORY_BASE);
-    assert((memory_size & 0xff) == 0);
+    assert(memory_base == MEMORY_BASE); // 内存开始的位置为 1M
+    assert((memory_size & 0xfff) == 0); // 要求按页对齐
 
-    total_pages = IDX(memory_size) + IDX(memory_base);
+    total_pages = IDX(memory_size) + IDX(MEMORY_BASE);
     free_pages = IDX(memory_size);
 
     LOGK("Total pages %d\n", total_pages);
     LOGK("Free pages %d\n", free_pages);
 
     if (memory_size < KERNEL_MEMORY_SIZE)
+    {
         panic("System memory is %dM too small, at least %dM needed\n",
-            memory_size / MEMORY_BASE, KERNEL_MEMORY_SIZE / MEMORY_BASE);
+              memory_size / MEMORY_BASE, KERNEL_MEMORY_SIZE / MEMORY_BASE);
+    }
 }
 
 static u32 start_page = 0;  // 可分配物理内存起始位置

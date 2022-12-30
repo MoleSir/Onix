@@ -9,12 +9,14 @@
 #include <onix/syscall.h>
 #include <ds/bitmap.h>
 #include <string.h>
+#include <ds/list.h>
 
 extern bitmap_t kernel_map;
 extern void task_switch(task_t* next);
 
 #define NR_TASKS 64
 static task_t* task_table[NR_TASKS];
+static list_t block_list;
 
 // 获取任务数组第一个空闲位置，并且构建一个返回
 static task_t* get_free_task()
@@ -145,13 +147,45 @@ void task_yield()
     schedule();
 }
 
+void task_block(task_t* task, list_t* blist, task_state_t state)
+{
+    assert(!get_interrupt_state());
+    assert(task->node.next == NULL);
+    assert(task->node.prve == NULL);
+
+    if (blist == NULL)
+        blist = &block_list;
+    
+    list_push(blist, &(task->node));
+
+    assert(state != TASK_REDAY && state != TASK_RUNNING);
+
+    task->state = state;
+
+    task_t* current = running_task();
+    if (current == task)
+        schedule();
+}
+
+void task_unblock(task_t* task)
+{
+    assert(!get_interrupt_state());
+
+    list_remove(&(task->node));
+
+    assert(task->node.next == NULL);
+    assert(task->node.prve == NULL);
+
+    task->state = TASK_REDAY;
+}
+
 u32 thread_a()
 {
     set_interrupt_state(true);
     while (true)
     {
         printk("A");
-        yield();
+        test();
     }
 }
 
@@ -161,7 +195,7 @@ u32 thread_b()
     while (true)
     {
         printk("B");
-        yield();
+        test();
     }
 }
 
@@ -171,7 +205,7 @@ u32 thread_c()
     while (true)
     {
         printk("C");
-        yield();
+        test();
     }
 }
 
@@ -180,6 +214,7 @@ void task_init()
 {
     task_setup();
 
+    list_init(&block_list);
     task_create(thread_a, "thread a", 5, KERNEL_USER);
     task_create(thread_b, "thread b", 5, KERNEL_USER);
     task_create(thread_c, "thread c", 5, KERNEL_USER);

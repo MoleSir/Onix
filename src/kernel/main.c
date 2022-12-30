@@ -25,8 +25,7 @@ void kernel_init()
     task_init();
     syscall_init();
     
-    //asm volatile("sti\n");
-    list_test();
+    asm volatile("sti\n");
 
     hang();
 }

@@ -1,6 +1,7 @@
 #include <onix/console.h>
 #include <onix/interrupt.h>
 #include <onix/io.h>
+#include <onix/mutex.h>
 #include <string.h>
 
 #define CRT_ADDR_REG 0x3D4 // CRT(6845)索引寄存器
@@ -175,7 +176,7 @@ static void command_lf()
 
 void console_write(char* buf, u32 count)
 {
-    bool intr = interrupt_disable();
+    // bool intr = interrupt_disable();
     char ch;
     while (count--)
     {
@@ -224,7 +225,7 @@ void console_write(char* buf, u32 count)
         }
     }
     set_cursor();
-    set_interrupt_state(intr);
+    // set_interrupt_state(intr);
 }
 
 void console_init()

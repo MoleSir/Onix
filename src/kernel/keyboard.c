@@ -4,6 +4,7 @@
 #include <onix/debug.h>
 #include <onix/mutex.h>
 #include <onix/task.h>
+#include <ds/fifo.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -222,10 +223,26 @@ static char keymap[][4] = {
     /* 0x5F */ {INV, INV, false, false}, // PrintScreen
 };
 
-static bool capslock_state; // 大写锁定
-static bool scrlock_state;  // 滚动锁定
-static bool numlock_state;  // 数字锁定
-static bool extcode_state;  // 扩展码状态
+// 锁
+static lock_t lock;
+// 等待输入的任务
+static task_t* waiter;
+
+// 缓冲区大小
+#define BUFFER_SIZE 64
+// 输入缓冲区
+static char buf[BUFFER_SIZE];
+// 循环队列
+static fifo_t fifo;
+
+// 大写锁定
+static bool capslock_state;
+// 滚动锁定
+static bool scrlock_state;
+// 数字锁定
+static bool numlock_state;
+// 扩展码状态
+static bool extcode_state;
 
 // CTRL 键状态
 #define ctrl_state (keymap[KEY_CTRL_L][2] || keymap[KEY_CTRL_L][3])
@@ -372,9 +389,32 @@ void keyboard_handler(int vector)
     if (ch == INV)
         return;
 
-    LOGK("keydown %c \n", ch);
+    // LOGK("keydown %c \n", ch);
+    // 加入缓冲区
+    fifo_put(&fifo, ch);
+    if (waiter != NULL)
+    {
+        task_unblock(waiter);
+        waiter = NULL;
+    }
 }
 
+u32 keyboard_read(char* buf, u32 count)
+{
+    lock_acquire(&lock);
+    int nr = 0;
+    while (nr < count)
+    {
+        while (fifo_empty(&fifo))
+        {
+            waiter = running_task();
+            task_block(waiter, NULL, TASK_WAITING);
+        }
+        buf[nr++] = fifo_get(&fifo);
+    }
+    lock_release(&lock);
+    return count;
+}
 
 void keyboard_init()
 {
@@ -382,6 +422,10 @@ void keyboard_init()
     scrlock_state = false;
     capslock_state = false;
     extcode_state = false;
+
+    fifo_init(&fifo, buf, BUFFER_SIZE);
+    lock_init(&lock);
+    waiter = NULL;
 
     set_leds();
 

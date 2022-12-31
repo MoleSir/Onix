@@ -63,6 +63,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/lib/stdlib.o \
 	$(BUILD)/ds/bitmap.o \
 	$(BUILD)/ds/list.o \
+	$(BUILD)/ds/fifo.o \
 
 	$(shell mkdir -p $(dir $@))
 	ld ${LDFLAGS} $^ -o $@

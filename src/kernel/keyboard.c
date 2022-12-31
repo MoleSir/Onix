@@ -2,19 +2,24 @@
 #include <onix/io.h>
 #include <onix/assert.h>
 #include <onix/debug.h>
+#include <onix/mutex.h>
+#include <onix/task.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
 #define KEYBOARD_DATA_PORT 0x60
 #define KEYBOARD_CTRL_PORT 0x64
 
-#define INV 0 // 不可见
+#define KEYBOARD_CMD_LED 0xED // 设置 LED 状态
+#define KEYBOARD_CMD_ACK 0xFA // ACK
+
+#define INV 0 // 不可见字符
 
 #define CODE_PRINT_SCREEN_DOWN 0xB7
 
 typedef enum
 {
-    KEY_NONE = 0,
+    KEY_NONE,
     KEY_ESC,
     KEY_1,
     KEY_2,
@@ -217,14 +222,10 @@ static char keymap[][4] = {
     /* 0x5F */ {INV, INV, false, false}, // PrintScreen
 };
 
-// 大写锁定
-static bool capslock_state;
-// 滚动锁定
-static bool scrlock_state;
-// 数字锁定
-static bool numlock_state;
-// 扩张码锁定
-static bool extcode_state;
+static bool capslock_state; // 大写锁定
+static bool scrlock_state;  // 滚动锁定
+static bool numlock_state;  // 数字锁定
+static bool extcode_state;  // 扩展码状态
 
 // CTRL 键状态
 #define ctrl_state (keymap[KEY_CTRL_L][2] || keymap[KEY_CTRL_L][3])
@@ -234,6 +235,38 @@ static bool extcode_state;
 
 // SHIFT 键状态
 #define shift_state (keymap[KEY_SHIFT_L][2] || keymap[KEY_SHIFT_R][2])
+
+static void keyboard_wait()
+{
+    u8 state;
+    do
+    {
+        state = inb(KEYBOARD_CTRL_PORT);
+    } while (state & 0x02); // 读取键盘缓冲区，直到为空
+}
+
+static void keyboard_ack()
+{
+    u8 state;
+    do
+    {
+        state = inb(KEYBOARD_DATA_PORT);
+    } while (state != KEYBOARD_CMD_ACK);
+}
+
+static void set_leds()
+{
+    u8 leds = (capslock_state << 2) | (numlock_state << 1) | scrlock_state;
+    keyboard_wait();
+    // 设置 LED 命令
+    outb(KEYBOARD_DATA_PORT, KEYBOARD_CMD_LED);
+    keyboard_ack();
+
+    keyboard_wait();
+    // 设置 LED 灯状态
+    outb(KEYBOARD_DATA_PORT, leds);
+    keyboard_ack();
+}
 
 void keyboard_handler(int vector)
 {
@@ -308,6 +341,11 @@ void keyboard_handler(int vector)
         led = true;
     }
 
+    if (led)
+    {
+        set_leds();
+    }
+
     // 计算 shift 状态
     bool shift = false;
     if (capslock_state && ('a' <= keymap[makecode][0] <= 'z'))
@@ -337,6 +375,7 @@ void keyboard_handler(int vector)
     LOGK("keydown %c \n", ch);
 }
 
+
 void keyboard_init()
 {
     numlock_state = false;
@@ -344,8 +383,8 @@ void keyboard_init()
     capslock_state = false;
     extcode_state = false;
 
-    // 设置按键中断处理函数
+    set_leds();
+
     set_interrupt_handler(IRQ_KEYBOARD, keyboard_handler);
-    // 设置按键中断有效
     set_interrupt_mask(IRQ_KEYBOARD, true);
 }

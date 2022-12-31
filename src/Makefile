@@ -57,6 +57,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/syscall.o \
 	$(BUILD)/kernel/mutex.o \
 	$(BUILD)/kernel/thread.o \
+	$(BUILD)/kernel/keyboard.o \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \

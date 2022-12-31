@@ -24,14 +24,12 @@ mutex_t mutex;
 
 void init_thread()
 {
-    mutex_init(&mutex);
     set_interrupt_state(true);
 
     while (true)
     {
-        mutex_lock(&mutex);
         LOGK("init task...\n");
-        mutex_unlock(&mutex);
+        sleep(500);
     }
 }
 
@@ -42,8 +40,7 @@ void test_thread()
 
     while (true)
     {
-        mutex_lock(&mutex);
-        LOGK("test task %d...\n", counter++);
-        mutex_unlock(&mutex);
+        LOGK("test task %x...\n", counter++);
+        sleep(1000);
     }
 }

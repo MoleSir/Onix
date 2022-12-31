@@ -308,7 +308,6 @@ void keyboard_handler(int vector)
         led = true;
     }
 
-
     // 计算 shift 状态
     bool shift = false;
     if (capslock_state && ('a' <= keymap[makecode][0] <= 'z'))
@@ -331,10 +330,10 @@ void keyboard_handler(int vector)
     {
         ch = keymap[makecode][shift];
     }
-    
+
     if (ch == INV)
-        return 
-    
+        return;
+
     LOGK("keydown %c \n", ch);
 }
 

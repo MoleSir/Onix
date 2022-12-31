@@ -28,8 +28,8 @@ void init_thread()
 
     while (true)
     {
-        LOGK("init task...\n");
-        sleep(500);
+        //LOGK("init task...\n");
+        //sleep(500);
     }
 }
 
@@ -40,7 +40,7 @@ void test_thread()
 
     while (true)
     {
-        LOGK("test task %x...\n", counter++);
-        sleep(1000);
+        //LOGK("test task %x...\n", counter++);
+        //sleep(1000);
     }
 }

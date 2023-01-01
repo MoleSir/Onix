@@ -1,6 +1,8 @@
 #include <onix/interrupt.h>
 #include <onix/syscall.h>
 #include <onix/debug.h>
+#include <onix/task.h>
+#include <onix/printk.h>
 #include <onix/mutex.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
@@ -22,22 +24,23 @@ void idle_thread()
 
 extern u32 keyboard_read(char* buf, u32 count);
 
-void init_thread()
+static void real_init_thread()
 {
-    set_interrupt_state(true);
     u32 counter = 0;
-
-    char ch;
+    char chl;
     while (true)
     {
-        bool intr = interrupt_disable();
-        keyboard_read(&ch, 1);
-        printk("%c", ch);
-
-        set_interrupt_state(intr);
-        //LOGK("init task...\n");
-        //sleep(500);
+        //asm volatile("in $0x92, %ax\n");
+        //printk("HHH\n");
     }
+}
+
+extern void task_to_user_mode(target_t target);
+void init_thread()
+{
+    // set_interrupt_state(false);
+    char temp[100];
+    task_to_user_mode(real_init_thread);
 }
 
 void test_thread()

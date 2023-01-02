@@ -4,6 +4,7 @@
 #include <onix/task.h>
 #include <onix/printk.h>
 #include <onix/mutex.h>
+#include <stdio.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -27,20 +28,23 @@ extern u32 keyboard_read(char* buf, u32 count);
 static void real_init_thread()
 {
     u32 counter = 0;
-    char chl;
     while (true)
     {
-        //asm volatile("in $0x92, %ax\n");
-        //printk("HHH\n");
+        printf("counter: %d\n", counter++);
     }
 }
 
 extern void task_to_user_mode(target_t target);
 void init_thread()
 {
-    // set_interrupt_state(false);
+    //set_interrupt_state(true);
     char temp[100];
     task_to_user_mode(real_init_thread);
+    while (true)
+    {
+        //printk("hhh");
+    }
+    
 }
 
 void test_thread()

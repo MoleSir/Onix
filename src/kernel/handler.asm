@@ -49,6 +49,8 @@ interrupt_exit:
     ; 对应 push %1
     ; 对应 error code 或 push magic
     add esp, 8
+    ; iret 相当于依次把当前栈上的值赋值给：
+    ; eip, cs, eflags, esp, ss
     iret
 
 INTERRUPT_HANDLER 0x00, 0; divide by zero

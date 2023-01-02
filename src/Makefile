@@ -61,6 +61,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \
+	$(BUILD)/lib/printf.o \
 	$(BUILD)/ds/bitmap.o \
 	$(BUILD)/ds/list.o \
 	$(BUILD)/ds/fifo.o \

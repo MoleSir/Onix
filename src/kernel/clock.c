@@ -3,6 +3,7 @@
 #include <onix/assert.h>
 #include <onix/debug.h>
 #include <onix/task.h>
+#include <onix/printk.h>
 #include <onix/onix.h>
 
 #define PIT_CHAN0_REG 0X40
@@ -56,6 +57,8 @@ void clock_handler(int vector)
     jiffies++;
     
     task_t* task = running_task();
+    printk("current task: 0x%p\n", task);
+    
     assert(task->magic == ONIX_MAGIC);
 
     task->jiffies = jiffies;
@@ -87,4 +90,5 @@ void clock_init()
     set_interrupt_handler(IRQ_CLOCK, clock_handler);
     // 打开时钟中断
     set_interrupt_mask(IRQ_CLOCK, true);
+    DEBUGK("clock init...\n");
 }

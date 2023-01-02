@@ -174,7 +174,7 @@ static void command_lf()
     scroll_up();
 }
 
-void console_write(char* buf, u32 count)
+int32 console_write(char* buf, u32 count)
 {
     bool intr = interrupt_disable();
     
@@ -228,6 +228,7 @@ void console_write(char* buf, u32 count)
     set_cursor();
     
     set_interrupt_state(intr);
+    return count;
 }
 
 void console_init()

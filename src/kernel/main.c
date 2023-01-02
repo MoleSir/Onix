@@ -25,11 +25,8 @@ void kernel_init()
 
     // time_init();
     // rtc_init(); 
-
     task_init();
     syscall_init();
-    
-    asm volatile("sti\n");
 
-    hang();
+    set_interrupt_state(true);
 }

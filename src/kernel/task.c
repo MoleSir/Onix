@@ -18,6 +18,7 @@
 extern u32 volatile jiffies;
 extern u32 jiffy;
 extern bitmap_t kernel_map;
+extern tss_t tss;
 extern void task_switch(task_t* next);
 
 static task_t* task_table[NR_TASKS];
@@ -70,6 +71,17 @@ static task_t* task_search(task_state_t state)
     return task;
 }
 
+// 激活任务
+void task_active(task_t* task)
+{
+    assert(task->magic == ONIX_MAGIC);
+
+    if (task->uid != KERNEL_USER)
+    {
+        tss.esp0 = (u32)task + PAGE_SIZE;
+    }
+}
+
 // 获得当前任务
 task_t* running_task()
 {
@@ -105,6 +117,9 @@ void schedule()
     if (next == current)
         return;
     
+    //printk("switch to 0x%p\n", next);
+    // tss.esp0 与 tss.ss0 在 int 时被自动切换?
+    task_active(next);
     task_switch(next);
 }
 
@@ -214,14 +229,14 @@ void task_to_user_mode(target_t target)
     addr -= sizeof(intr_frame_t);
     intr_frame_t* iframe = (intr_frame_t*)(addr);
 
-    iframe->vector = 0x20;
+    iframe->vector = 0x21;
     iframe->edi = 1;
     iframe->esi = 2;
     iframe->ebp = 3;
     iframe->esp_dummy = 4;
     iframe->ebx = 5;
-    iframe->ecx = 6;
-    iframe->ebx = 7;
+    iframe->edx = 6;
+    iframe->ecx = 7;
     iframe->eax = 8;
 
     iframe->gs = 0;
@@ -236,9 +251,10 @@ void task_to_user_mode(target_t target)
     u32 stack3 = alloc_kpage(1);
 
     iframe->eip = (u32)target;
-    iframe->eflags = (0<< 12 | 0b10 | 1 << 9);
+    iframe->eflags = (0 << 12 | 0b10 | 1 << 9); 
     iframe->esp = stack3 + PAGE_SIZE;
 
+    BMB;
     asm volatile(
         "movl %0, %%esp\n"
         "jmp interrupt_exit\n" ::"m"(iframe));

@@ -203,6 +203,12 @@ static void put_page(u32 addr)
     LOGK("PUT page 0x%p\n", addr);
 }
 
+// 获取 cr2 寄存器
+u32 get_cr2()
+{
+    asm volatile("movl %cr2, %eax\n");
+}
+
 // 获取 cr3 寄存器
 u32 get_cr3()
 {
@@ -448,9 +454,67 @@ void unlink_page(u32 vaddr)
     u32 paddr = PAGE(entry->index);
     LOGK("UNLINK from 0x%p to 0x%p", vaddr, paddr);
     
-    // 物理地址可以被多个进程使用，如果存在只有一个进程使用，就可以把这个页面释放掉
-    if (memory_map[entry->index] == 1)
-        put_page(paddr);
+    // 把这个页面释放掉
+    put_page(paddr);
 
     flush_tlb(vaddr);
+}
+
+// 拷贝当前进程页目录
+page_entry_t* copy_pde()
+{
+    task_t* task = running_task();
+    page_entry_t* pde = (page_entry_t*)alloc_kpage(1);
+    memcpy(pde, (void*)task->pde, PAGE_SIZE);
+
+    // 最后一项指向自己
+    page_entry_t* entry = pde + 1023;
+    entry_init(entry, IDX(pde));
+
+    return pde;
+}
+
+// 缺页异常时，CPU 会自动压入错误码
+typedef struct page_error_code_t
+{
+    u8 present : 1;
+    u8 write : 1;
+    u8 user : 1;
+    u8 reserved0 : 1;
+    u8 fetch : 1;
+    u8 protection : 1;
+    u8 shadow : 1;
+    u8 reserved1 : 8;
+    u8 sgx : 1;
+    u16 reserved2;
+} _packed page_error_code_t;
+
+// page fault
+void page_fault(
+    int vector,
+    u32 edi, u32 esi, u32 ebp, u32 esp,
+    u32 ebx, u32 edx, u32 ecx, u32 eax,
+    u32 gs, u32 fs, u32 es, u32 ds,
+    u32 vector0, u32 error, u32 eip, u32 cs, u32 eflags)
+{
+    assert(vector == 0xe);
+    u32 vaddr = get_cr2();
+    LOGK("fault address 0x%p\n", vaddr);
+
+    page_entry_t* code = (page_entry_t*)(&error);
+    task_t* task = running_task();
+    
+    assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);
+
+    if (!code->present && (vaddr > USER_STACK_BUTTOM))
+    {
+        // 获得页面起始地址
+        u32 page = PAGE(IDX(vaddr));
+        // 申请一页内存映射
+        link_page(page);
+        // BMB;
+        return;
+    }
+
+    panic("page fault!!!\n");
 }

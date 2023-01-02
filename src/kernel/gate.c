@@ -27,23 +27,7 @@ static task_t* task = NULL;
 
 static u32 sys_test()
 {   
-    char* ptr = (char*)0x1600000;
 
-    BMB;
-    
-    link_page(0x1600000);
-
-    BMB;
-
-    ptr = (char*) 0x1600000;
-    ptr[0] = 'T';
-
-    BMB;
-
-    unlink_page(0x1600000);
-
-    BMB;
-    return 255;
 }
 
 static u32 sys_write(fd_t fd, char* buf, u32 len)

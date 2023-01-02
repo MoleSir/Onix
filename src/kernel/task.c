@@ -77,10 +77,11 @@ void task_active(task_t* task)
 {
     assert(task->magic == ONIX_MAGIC);
 
+    if (task->pde != get_cr3())
+        set_cr3(task->pde);
+
     if (task->uid != KERNEL_USER)
-    {
         tss.esp0 = (u32)task + PAGE_SIZE;
-    }
 }
 
 // 获得当前任务
@@ -231,6 +232,10 @@ void task_to_user_mode(target_t target)
     // 1024 字节，一共 0x1000 * 8 = 0x8000 个bit，每个 bit 对应一个页面，一共 0x8000 * 0x1000 = 0x8000000 字节
     bitmap_init(task->vmap, buf, PAGE_SIZE, KERNEL_MEMORY_SIZE / PAGE_SIZE);
 
+    // 创建用户进程页表
+    task->pde = (u32)copy_pde();
+    set_cr3(task->pde);
+
     u32 addr = (u32)task + PAGE_SIZE;
 
     addr -= sizeof(intr_frame_t);
@@ -255,11 +260,9 @@ void task_to_user_mode(target_t target)
 
     iframe->error = ONIX_MAGIC;
 
-    u32 stack3 = alloc_kpage(1);
-
     iframe->eip = (u32)target;
     iframe->eflags = (0 << 12 | 0b10 | 1 << 9); 
-    iframe->esp = stack3 + PAGE_SIZE;
+    iframe->esp = USER_STACK_TOP;
 
     asm volatile(
         "movl %0, %%esp\n"

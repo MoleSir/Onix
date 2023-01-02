@@ -9,8 +9,14 @@
 // 内核内存空间，8M
 #define KERNEL_MEMORY_SIZE 0x80000
 
-// 用户栈最大 128M
+// 用户栈顶 128M
 #define USER_STACK_TOP 0x8000000
+
+// 用户栈最大 2M
+#define USER_STACK_SIZE 0x200000
+
+// 用户栈低地址 128M - 2M
+#define USER_STACK_BUTTOM (USER_STACK_TOP - USER_STACK_SIZE)
 
 // 内核页目录索引
 #define KERNEL_PAGE_DIR 0x1000
@@ -35,6 +41,9 @@ typedef struct page_entry_t
     u8 ignored : 3;  // 该安排的都安排了，送给操作系统吧
     u32 index : 20;  // 页索引
 } _packed page_entry_t;
+
+// 获取 cr2 寄存器
+u32 get_cr2();
 
 // 获取 cr3 寄存器
 u32 get_cr3();

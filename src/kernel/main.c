@@ -8,6 +8,7 @@ extern void time_init();
 extern void rtc_init();
 extern void memory_map_init();
 extern void mapping_init();
+extern void arena_init();
 extern void task_init();
 extern void syscall_init();
 extern void keyboard_init();
@@ -20,6 +21,7 @@ void kernel_init()
     interrupt_init();
     memory_map_init();
     mapping_init();
+    arena_init();
     clock_init();
     keyboard_init();
 

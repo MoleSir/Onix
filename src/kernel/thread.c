@@ -4,6 +4,7 @@
 #include <onix/task.h>
 #include <onix/printk.h>
 #include <onix/mutex.h>
+#include <onix/arena.h>
 #include <stdio.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
@@ -30,16 +31,19 @@ static void real_init_thread()
     u32 counter = 0;
     while (true)
     {
-        printf("counter: %d\n", counter++);
     }
 }
 
 extern void task_to_user_mode(target_t target);
 void init_thread()
 {
-    //set_interrupt_state(true);
-    char temp[100];
-    task_to_user_mode(real_init_thread);    
+    set_interrupt_state(true);
+    //char temp[100];
+    //task_to_user_mode(real_init_thread);   
+    while (true)
+    {
+    }
+     
 }
 
 void test_thread()
@@ -49,7 +53,18 @@ void test_thread()
 
     while (true)
     {
-        //LOGK("test task %x...\n", counter++);
-        sleep(709);
+        void* ptr = kmalloc(1200);
+        LOGK("kmalloc 0x%p...\n", ptr);
+        kfree(ptr);
+
+        ptr = kmalloc(1024);
+        LOGK("kmalloc 0x%p...\n", ptr);
+        kfree(ptr);
+
+        ptr = kmalloc(54);
+        LOGK("kmalloc 0x%p...\n", ptr);
+        kfree(ptr);
+
+        sleep(5000);
     }
 }

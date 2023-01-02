@@ -57,7 +57,7 @@ void clock_handler(int vector)
     jiffies++;
     
     task_t* task = running_task();
-    printk("current task: 0x%p\n", task);
+    //printk("current task: 0x%p\n", task);
     
     assert(task->magic == ONIX_MAGIC);
 
@@ -90,5 +90,4 @@ void clock_init()
     set_interrupt_handler(IRQ_CLOCK, clock_handler);
     // 打开时钟中断
     set_interrupt_mask(IRQ_CLOCK, true);
-    DEBUGK("clock init...\n");
 }

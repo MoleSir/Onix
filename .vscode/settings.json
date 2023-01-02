@@ -12,6 +12,7 @@
         "task.h": "c",
         "string.h": "c",
         "interrupt.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "list.h": "c"
     }
 }

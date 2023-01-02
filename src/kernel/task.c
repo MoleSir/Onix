@@ -8,6 +8,7 @@
 #include <onix/assert.h>
 #include <onix/syscall.h>
 #include <onix/global.h>
+#include <onix/arena.h>
 #include <ds/bitmap.h>
 #include <string.h>
 #include <ds/list.h>
@@ -222,7 +223,13 @@ static task_t* task_create(target_t target, const char* name, u32 priority, u32 
 // 调用前栈顶需要准备足够的空间
 void task_to_user_mode(target_t target)
 {
-    task_t* task = running_task();
+    task_t* task = running_task(); 
+
+    task->vmap = kmalloc(sizeof(bitmap_t));
+    // 用一页空间来保存位图
+    void* buf = (void*)alloc_kpage(1);
+    // 1024 字节，一共 0x1000 * 8 = 0x8000 个bit，每个 bit 对应一个页面，一共 0x8000 * 0x1000 = 0x8000000 字节
+    bitmap_init(task->vmap, buf, PAGE_SIZE, KERNEL_MEMORY_SIZE / PAGE_SIZE);
 
     u32 addr = (u32)task + PAGE_SIZE;
 
@@ -254,7 +261,6 @@ void task_to_user_mode(target_t target)
     iframe->eflags = (0 << 12 | 0b10 | 1 << 9); 
     iframe->esp = stack3 + PAGE_SIZE;
 
-    BMB;
     asm volatile(
         "movl %0, %%esp\n"
         "jmp interrupt_exit\n" ::"m"(iframe));

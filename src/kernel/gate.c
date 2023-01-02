@@ -3,6 +3,7 @@
 #include <onix/debug.h>
 #include <onix/syscall.h>
 #include <onix/console.h>
+#include <onix/memory.h>
 #include <onix/task.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
@@ -26,17 +27,22 @@ static task_t* task = NULL;
 
 static u32 sys_test()
 {   
-    if (!task)
-    {
-        task = running_task();
-        task_block(task, NULL, TASK_BLOCKED);
-    }
-    else 
-    {
-        task_unblock(task);
-        task = NULL;
-    }
+    char* ptr = (char*)0x1600000;
+
+    BMB;
     
+    link_page(0x1600000);
+
+    BMB;
+
+    ptr = (char*) 0x1600000;
+    ptr[0] = 'T';
+
+    BMB;
+
+    unlink_page(0x1600000);
+
+    BMB;
     return 255;
 }
 

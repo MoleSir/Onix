@@ -168,7 +168,7 @@ extern syscall_check
 extern syscall_table
 extern syscall_handler
 syscall_handler:
-    xchg bx, bx
+    ;xchg bx, bx
 
     ; 验证系统调用号
     push eax
@@ -190,7 +190,7 @@ syscall_handler:
 
     ; 向中断向量表传递参数中断向量 vector
     push 0x80
-    xchg bx, bx
+    ;xchg bx, bx
 
     ; 将第 3、2、1 个参数压栈
     push edx
@@ -200,7 +200,7 @@ syscall_handler:
     ; 执行 syscall_table[eax]
     call [syscall_table + eax * 4]
 
-    xchg bx, bx
+    ;xchg bx, bx
     ; 系统调用结束恢复栈
     add esp, 12
 

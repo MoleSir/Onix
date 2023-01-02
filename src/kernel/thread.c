@@ -39,12 +39,7 @@ void init_thread()
 {
     //set_interrupt_state(true);
     char temp[100];
-    task_to_user_mode(real_init_thread);
-    while (true)
-    {
-        //printk("hhh");
-    }
-    
+    task_to_user_mode(real_init_thread);    
 }
 
 void test_thread()

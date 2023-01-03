@@ -81,6 +81,8 @@ typedef struct intr_frame_t
     u32 ss;
 } intr_frame_t;
 
+pid_t task_fork();
+
 task_t* running_task();
 void schedule();
 

@@ -337,6 +337,71 @@ void task_unblock(task_t* task)
     task->state = TASK_REDAY;
 }
 
+extern void interrupt_exit();
+
+// 构建栈
+static void task_build_stack(task_t* task)
+{
+    // 构造中断返回现场
+    u32 addr = (u32)task + PAGE_SIZE;
+    addr -= sizeof(intr_frame_t);
+    intr_frame_t* iframe = (intr_frame_t*)addr;
+    // 特别的是 eax 为保存返回值 0
+    iframe->eax = 0;
+
+    // 构造返回现场
+    addr -= sizeof(task_frame_t);
+    task_frame_t* frame = (task_frame_t*)addr;
+
+    frame->ebp = 0xaa55aa55;
+    frame->ebx = 0xaa55aa55;
+    frame->edi = 0xaa55aa55;
+    frame->esi = 0xaa55aa55;
+
+    frame->eip = interrupt_exit;
+
+    task->stack = (u32*)frame;
+}
+
+// fork!!
+pid_t task_fork()
+{
+    task_t* task = running_task();
+
+    // 当前进程非阻塞，并且正在执行
+    assert(task->node.next == NULL && task->node.prve == NULL && task->state == TASK_RUNNING);
+
+    // 拷贝内核 和 PCB
+    task_t* child = get_free_task();
+    pid_t pid = child->pid;
+    // 父、子进程整页复制
+    memcpy(child, task, PAGE_SIZE);
+
+    // 改变子进程的若干字段
+    child->pid = pid;
+    child->ppid = task->pid;
+    child->ticks = child->priority;
+    child->state = TASK_REDAY;
+
+    // 拷贝用户进程虚拟内存位图
+    child->vmap = kmalloc(sizeof(bitmap_t));
+    memcpy(child->vmap, task->vmap, sizeof(bitmap_t));
+
+    // 拷贝虚拟内存位图缓存
+    void* buf = (void*)alloc_kpage(1);
+    memcpy(buf, task->vmap->bits, PAGE_SIZE);
+    child->vmap->bits = buf;
+
+    // 拷贝页目录
+    child->pde = (u32)copy_pde();
+
+    // 构造 child 内核栈
+    task_build_stack(child);
+
+    // 父进程返回子进程 pid
+    return child->pid;
+}
+
 extern void idle_thread();
 extern void init_thread();
 extern void test_thread();

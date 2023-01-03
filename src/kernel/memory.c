@@ -298,7 +298,6 @@ void mapping_init()
 
 // 通过页目录最后一个表项找到页面，通过页面的最后一个表项找到页面
 // 因为 pde 最后一个表项指向本身，所以找了两次最后一项，最后得到 pde 地址；
-// 所以开启分页后 0xffffff000 映射到 0x1000
 static page_entry_t* get_pde()
 {
     return (page_entry_t*)(0xfffff000);
@@ -460,16 +459,79 @@ void unlink_page(u32 vaddr)
     flush_tlb(vaddr);
 }
 
+// 对 page 地址的一页拷贝一份，并且返回新页的物理地址，page 本身是虚拟地址
+static u32 copy_page(void* page)
+{
+    // 申请一页，返回的是物理地址的页索引
+    u32 paddr = get_page();
+
+    // 现在不能直接访问 paddr 的物理地址，必须先给一个映射
+    // 为了把 page 上的内容拷贝到 paddr 上，先把 paddr 映射到逻辑地址 0 处
+    page_entry_t* entry = get_pte(0, false);
+    entry_init(entry, IDX(paddr));
+    
+    // 再使用逻辑地址进行拷贝
+    memcpy((void*)0, (void*)page, PAGE_SIZE);
+
+    // 这个页面临时使用，其中的 Index 没有意义，所以这个存在位为 0
+    entry->present = false;
+    return paddr;
+}
+
 // 拷贝当前进程页目录
 page_entry_t* copy_pde()
 {
+    // task 为父进程
     task_t* task = running_task();
+    // pde 是逻辑地址，但前 8M 的内存就 vaddr = paddr，所以 pde 可直接返回给子进程使用
     page_entry_t* pde = (page_entry_t*)alloc_kpage(1);
+    // 拷贝一份页目录
     memcpy(pde, (void*)task->pde, PAGE_SIZE);
 
     // 最后一项指向自己
     page_entry_t* entry = pde + 1023;
     entry_init(entry, IDX(pde));
+
+    // 遍历页目录，拷贝已经存在的页表，遍历的是子进程的页目录，其中的内容跟父进程一致
+    page_entry_t* dentry;
+    // 0、1 是内核态占据的 8M 内存
+    for (size_t didx = 2; didx < 1023; ++didx)
+    {
+        // 两个页目录，内容完全一致
+        dentry = pde + didx;
+        if (!dentry->present)
+            continue;
+
+        // 页目录项目存在指向的页表，pte 是页表逻辑地址（页表有两个逻辑地址！可用用 0xffc 开头连查两次页目录，或者直接前 8M paddr = vaddr）
+        // 父、子进程，两个页目录都指向这个页表地址
+        page_entry_t* pte = (page_entry_t*)(PDE_MASK | (didx << 12));
+
+        // 遍历页表
+        for (size_t tidx = 0; tidx < 1024; ++tidx)
+        {
+            entry = pte + tidx;
+            if (!entry->present)
+                continue;
+
+            // 页表项存在指向的页面
+            assert(memory_map[entry->index] > 0);
+
+            // 设置为只读，写时拷贝
+            entry->write = false;
+
+            // 物理引用 + 1
+            memory_map[entry->index]++;
+            assert(memory_map[entry->index] < 255);
+        }
+
+        // 拷贝这个页表，把逻辑地址 pte 这个页拷贝一份到 paddr 这个物理地址
+        u32 paddr = copy_page(pte);
+
+        // 设置子进程的页目录项指向新的页表!!!
+        dentry->index = IDX(paddr);
+    }
+
+    set_cr3(task->pde);
 
     return pde;
 }
@@ -501,10 +563,45 @@ void page_fault(
     u32 vaddr = get_cr2();
     LOGK("fault address 0x%p\n", vaddr);
 
-    page_entry_t* code = (page_entry_t*)(&error);
+    page_error_code_t* code = (page_entry_t*)(&error);
     task_t* task = running_task();
     
     assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);
+
+    // 错误码表示，这个地址存在物理页
+    if (code->present)
+    {
+        assert(code->write);
+
+        // 获取该虚拟地址对应的页表地址与页表表项
+        page_entry_t* pte = get_pte(vaddr, false);
+        page_entry_t* entry = pte + TIDX(vaddr);
+
+        // 这个表项应该存在，页面有被使用
+        assert(entry->present);
+        assert(memory_map[entry->index] > 0);
+
+        // 判断该页面的使用次数
+        if (memory_map[entry->index] == 1)
+        {   
+            // 只被一个进程使用，那么直接把写允许打开
+            entry->write = true;
+            LOGK("WRITE page for 0x%p\n", vaddr);
+        }
+        else
+        {
+            // 多个进程同时拥有一个只读页面，其中一个进程想写
+            // 获得虚拟地址对应的页面起始位置
+            void* page = (void*)PAGE(IDX(vaddr));
+            // 把这个页面拷贝一份，并且返回物理地址
+            u32 paddr = copy_page(page);
+            memory_map[entry->index]--;
+            entry_init(entry, IDX(paddr));
+            flush_tlb(vaddr);
+            LOGK("COPY page for 0x%p\n", vaddr);
+        }
+        return;
+    }
 
     if (!code->present && (vaddr < task->brk || vaddr >= USER_STACK_BUTTOM))
     {

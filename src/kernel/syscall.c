@@ -78,3 +78,8 @@ pid_t getppid()
 {
     _syscall0(SYS_NR_GETPPID);
 }
+
+pid_t fork()
+{
+    return _syscall0(SYS_NR_FORK);
+}

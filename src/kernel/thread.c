@@ -31,8 +31,17 @@ static void user_init_thread()
     u32 counter = 0;
     while (true)
     {
-        printf("init thread %d, %d, %d\n", getpid(), getppid(), counter++);
-        sleep(1000);
+        pid_t pid = fork();
+
+        if (pid)
+        {
+            printf("fork after parent %d, %d, %d\n", pid, getpid(), getppid());
+        }
+        else
+        {
+            printf("fork after parent %d, %d, %d\n", pid, getpid(), getppid());
+        }
+        hang();
     }
 }
 

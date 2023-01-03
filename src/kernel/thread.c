@@ -31,15 +31,8 @@ static void user_init_thread()
     u32 counter = 0;
     while (true)
     {
-        char* ptr = (char*)0x900000;
-        brk(ptr);
-
-        ptr -= 0x1000;
-        ptr[3] = 0xff;
-        
-        brk((void*)0x800000);
-
-        sleep(10000);
+        printf("init thread %d, %d, %d\n", getpid(), getppid(), counter++);
+        sleep(1000);
     }
 }
 
@@ -58,8 +51,7 @@ void test_thread()
 
     while (true)
     {
-        LOGK("test task %d...\n", counter++);
-        BMB;
+        printk("task thread %d, %d, %d\n", getpid(), getppid(), counter++);
         sleep(2000);
     }
 }

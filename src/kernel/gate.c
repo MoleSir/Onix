@@ -44,6 +44,7 @@ static u32 sys_write(fd_t fd, char* buf, u32 len)
 extern pid_t sys_getpid();
 extern pid_t sys_getppid();
 extern void task_yield();
+extern u32 sys_time();
 
 void syscall_init()
 {
@@ -56,6 +57,7 @@ void syscall_init()
     syscall_table[SYS_NR_EXIT] = task_exit;
     syscall_table[SYS_NR_FORK] = task_fork;
     syscall_table[SYS_NR_WAITPID] = task_waitpid;
+    syscall_table[SYS_NR_TIME] = sys_time;
     syscall_table[SYS_NR_BRK] = sys_brk;
     syscall_table[SYS_NR_WRITE] = sys_write;
     syscall_table[SYS_NR_SLEEP] = task_sleep;

@@ -24,8 +24,7 @@ void kernel_init()
     arena_init();
     clock_init();
     keyboard_init();
-
-    // time_init();
+    time_init();
     // rtc_init(); 
     syscall_init();
     task_init();

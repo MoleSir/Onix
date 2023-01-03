@@ -27,8 +27,9 @@ void kernel_init()
 
     // time_init();
     // rtc_init(); 
-    task_init();
     syscall_init();
+    task_init();
+
 
     set_interrupt_state(true);
 }

@@ -49,6 +49,11 @@ u32 test()
     return _syscall0(SYS_NR_TEST);
 }
 
+int32 brk(void* addr)
+{
+    _syscall1(SYS_NR_BRK, (u32)addr);
+}
+
 void yield()
 {
     _syscall0(SYS_NR_YIELD);

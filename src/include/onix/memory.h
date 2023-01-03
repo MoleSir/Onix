@@ -63,4 +63,10 @@ void link_page(u32 vaddr);
 // 去掉 vaddr 对应物理内存映射
 void unlink_page(u32 vaddr);
 
+// 拷贝页目录
+page_entry_t* copy_pde();
+
+// 系统调用 brk
+int32 sys_brk(void* addr);
+
 #endif

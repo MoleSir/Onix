@@ -40,8 +40,9 @@ static void user_init_thread()
         else
         {
             printf("fork after parent %d, %d, %d\n", pid, getpid(), getppid());
+            exit(0);
         }
-        hang();
+        sleep(1000);
     }
 }
 

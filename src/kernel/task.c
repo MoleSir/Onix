@@ -13,6 +13,8 @@
 #include <string.h>
 #include <ds/list.h>
 
+#define LOGK(fmt, args...) DEBUGK(fmt, ##args)
+
 #define NR_TASKS 64
 
 // 全局时间数量
@@ -400,6 +402,41 @@ pid_t task_fork()
 
     // 父进程返回子进程 pid
     return child->pid;
+}
+
+void task_exit(int status)
+{
+    task_t* task = running_task();
+
+    // 当前进程非阻塞，并且正在执行
+    assert(task->node.next == NULL && task->node.prve == NULL && task->state == TASK_RUNNING);
+
+    // 改变状态
+    task->state = TASK_DIED;
+    task->status = status;
+
+    // 释放页目录
+    free_pde();
+
+    // 释放虚拟位图
+    free_kpage((u32)task->vmap->bits, 1);
+    kfree(task->vmap);
+
+    // 将子进程的父进程复制为自己的父进程
+    for (size_t i = 0; i < NR_TASKS; ++i)
+    {
+        task_t* child = task_table[i];
+        if (!child)
+            continue;
+        
+        if (child->ppid != task->pid)
+            continue;
+
+        child->ppid = task->ppid;
+    }
+
+    LOGK("task 0x%p exit...\n", task);
+    schedule();
 }
 
 extern void idle_thread();

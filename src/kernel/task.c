@@ -434,9 +434,76 @@ void task_exit(int status)
 
         child->ppid = task->ppid;
     }
-
     LOGK("task 0x%p exit...\n", task);
+
+    task_t* parent = task_table[task->ppid];
+    // 如果：父进程在等待状态，并且（父进程在等待所有的子进程或父进程在等待这个子进程死亡）
+    if (parent->state == TASK_WAITING && 
+        (parent->waitpid == -1 || parent->waitpid == task->pid))
+    {
+        // 唤醒父进程
+        task_unblock(parent);
+    }    
+
     schedule();
+}
+
+pid_t task_waitpid(pid_t pid, int32* status)
+{
+    task_t* task = running_task();
+    task_t* child = NULL;
+
+    while (true)
+    {
+        bool has_child = false;
+        for (size_t i = 2; i < NR_TASKS; ++i)
+        {
+            task_t* ptr = task_table[i];
+            // 空任务
+            if (!ptr)
+                continue;
+
+            // 不是子进程
+            if (ptr->ppid != task->pid)
+                continue;
+
+            // 不是等待的子进程
+            if (pid != ptr->pid && pid != -1)
+                continue;
+            
+            // 满足条件，找到了 pid 的子进程
+            // 当前，子进程已经死亡，可以直接回收，跳转即可
+            if (ptr->state == TASK_DIED)
+            {
+                child = ptr;
+                task_table[i] = NULL;
+
+                *status = child->status;
+                u32 ret = child->pid;
+
+                free_kpage((u32)child, 1);
+                return ret;
+            }
+
+            // 有目标子进程，但还没有死亡，需要等待这个子进程到死亡为止
+            has_child = true;
+        }
+
+        if (has_child)
+        {
+            // 父进程等待子进程的死亡
+            task->waitpid = pid;
+            // 阻塞，等待子进程死亡时将其唤醒
+            task_block(task, NULL, TASK_WAITING);
+            continue;
+        }
+
+        // 没有要等待的子进程啊
+        break;
+    }
+
+    // 没有合适的子进程
+    return -1;
 }
 
 extern void idle_thread();

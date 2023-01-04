@@ -97,6 +97,15 @@ $(BUILD)/master.img: $(BUILD)/boot/boot.bin \
 # 将内核代码写入到磁盘的第 10 个扇起始的 200 个扇区
 	dd if=$(BUILD)/system.bin of=$@ bs=512 count=200 seek=10 conv=notrunc
 
+$(BUILD)/slave.img:
+
+# 创建一个 32M 的硬盘镜像
+	yes | bximage -q -hd=32 -func=create -sectsize=512 -imgmode=flat $@
+
+IMAGES := $(BUILD)/master.img $(BUILD)/slave.img
+
+image : $(IMAGES)
+
 $(BUILD)/kernel.iso : $(BUILD)/kernel.bin $(SRC)/utils/grub.cfg
 
 # 检测内核文件是否合法
@@ -110,32 +119,32 @@ $(BUILD)/kernel.iso : $(BUILD)/kernel.bin $(SRC)/utils/grub.cfg
 # 生成 iso 文件
 	grub-mkrescue -o $@ $(BUILD)/iso
 
-image : $(BUILD)/master.img
 
 .PHONY: clean
 clean:
 	rm -rf $(BUILD)
 
 .PHONY: bochs
-bochs:$(BUILD)/master.img
+bochs: $(IMAGES)
 	bochs -q -f ../bochs/bochsrc -unlock
 
 .PHONY: bochsg
-bochsg:$(BUILD)/master.img
+bochsg: $(IMAGES)
 	bochs-gdb -q -f ../bochs/bochsrc.gdb -unlock
 
 .PHONY: bochsb
 bochsb:	$(BUILD)/kernel.iso
 	bochs -q -f ../bochs/bochsrc.grub -unlock
 
-QEMU := qemu-system-i386 \
-	-m 32M \
-	-audiodev pa,id=hda \
-	-machine pcspk-audiodev=hda \
-	-rtc base=localtime \
+QEMU := qemu-system-i386
+QEMU += -m 32M
+QEMU += -audiodev pa,id=hda
+QEMU += -machine pcspk-audiodev=hda
+QEMU += -rtc base=localtime
+QEMU += -drive file=$(BUILD)/master.img,if=ide,index=0,media=disk,format=raw
+QEMU += -drive file=$(BUILD)/slave.img,if=ide,index=1,media=disk,format=raw
 
-QEMU_DISK := -boot c \
-	-drive file=$(BUILD)/master.img,if=ide,index=0,media=disk,format=raw \
+QEMU_DISK := -boot c
 
 QEMU_CDROM := -boot d \
 	-drive file=$(BUILD)/kernel.iso,media=cdrom \
@@ -143,11 +152,11 @@ QEMU_CDROM := -boot d \
 QEMU_DEBUG := -s -S
 
 .PHONY: qemu
-qemu: $(BUILD)/master.img
+qemu: $(IMAGES)
 	$(QEMU) $(QEMU_DISK)
 
 .PHONY: qemug
-qemug: $(BUILD)/master.img
+qemug: $(IMAGES)
 	$(QEMU) $(QEMU_DISK) $(QEMU_DEBUG)
 
 .PHONY: qemub

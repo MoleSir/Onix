@@ -40,8 +40,6 @@ extern void task_to_user_mode(target_t target);
 void init_thread()
 {
     char temp[100];
-    set_interrupt_state(true);
-    test();
     task_to_user_mode(user_init_thread);        
 }
 

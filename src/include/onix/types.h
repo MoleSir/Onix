@@ -8,6 +8,10 @@
 
 #define NULL ((void *)0) // NULL pointer
 
+#define CONCAT(x, y) x##y
+#define RESERVED_TOKEN(x, y) CONCAT(x, y)
+#define RESERVED RESERVED_TOKEN(reserved, __LINE__)
+
 #ifndef __cplusplus
 #define bool _Bool
 #define true 1

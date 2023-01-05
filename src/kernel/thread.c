@@ -46,10 +46,12 @@ void init_thread()
 void test_thread()
 {
     set_interrupt_state(true);
+    test();
+    LOGK("test finished of task %d\n", getpid());
     u32 counter = 0;
 
     while (true)
     {
-        test();
+        sleep(10);
     }
 }

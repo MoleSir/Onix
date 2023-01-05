@@ -4,6 +4,8 @@
 #include <onix/assert.h>
 #include <onix/debug.h>
 #include <onix/arena.h>
+#include <ds/list.h>
+#include <onix/onix.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -118,5 +120,76 @@ void device_init()
         device->ioctl = NULL;
         device->read = NULL;
         device->write = NULL;
+
+        list_init(&(device->request_list));
+    }
+}
+
+// 执行块设备请求
+static void do_request(request_t *req)
+{
+    LOGK("dev %d do request idx %d\n", req->dev, req->idx);
+
+    switch (req->type)
+    {
+    case REQ_READ:
+        device_read(req->dev, req->buf, req->count, req->idx, req->flags);
+        break;
+    case REQ_WRITE:
+        device_write(req->dev, req->buf, req->count, req->idx, req->flags);
+        break;
+    default:
+        panic("req type %d unknown!!!");
+        break;
+    }
+}
+
+// 块设备请求
+void device_request(dev_t dev, void *buf, u8 count, idx_t idx, int flags, u32 type)
+{
+    device_t *device = device_get(dev);
+    assert(device->type = DEV_BLOCK); // 是块设备
+    idx_t offset = idx + device_ioctl(device->dev, DEV_CMD_SECTOR_START, 0, 0);
+
+    // 如果是块，就找到其所在磁盘进行操作
+    if (device->parent)
+        device = device_get(device->parent);
+
+    // 创建一个请求结构体，赋上参数
+    request_t *req = kmalloc(sizeof(request_t));
+    req->dev = device->dev;
+    req->buf = buf;
+    req->count = count;
+    req->idx = offset;
+    req->flags = flags;
+    req->type = type;
+    req->task = NULL;
+
+    // 判断当前设备的请求列表是否为空
+    bool empty = list_empty(&device->request_list);
+
+    // 将请求压入链表，插入到第一个
+    list_push(&device->request_list, &req->node);
+
+    // 如果列表不为空，则阻塞，因为已经有请求在处理了，等待处理完成；
+    if (!empty)
+    {
+        req->task = running_task();
+        task_block(req->task, NULL, TASK_BLOCKED);
+    }
+
+    // 阻塞解开或链表为空，可用处理这个请求
+    do_request(req);
+
+    // 处理完，释放节点，释放内存空间
+    list_remove(&req->node);
+    kfree(req);
+
+    // 如果此时链表还有请求，就唤醒最后一个——先来先服务策略
+    if (!list_empty(&(device->request_list)))
+    {
+        request_t* nextreq = element_entry(request_t, node, device->request_list.tail.prve);
+        assert(nextreq->task->magic == ONIX_MAGIC);
+        task_unblock(nextreq->task);
     }
 }

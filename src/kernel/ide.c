@@ -6,6 +6,7 @@
 #include <onix/assert.h> 
 #include <onix/io.h>
 #include <onix/interrupt.h>
+#include <onix/device.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -302,12 +303,28 @@ int ide_pio_write(ide_disk_t* disk, void* buf, u8 count, idx_t lba)
             ctrl->waiter = task;
             task_block(task, NULL, TASK_BLOCKED);
         }
-
+        LOGK("write sector wit 1s, pid %d\n", task->pid);
+        task_sleep(100);
         ide_busy_wait(ctrl, IDE_SR_NULL);
     }
 
     lock_release(&ctrl->lock);
     return 0;
+}
+
+// 磁盘控制
+int ide_pio_ioctl(ide_disk_t *disk, int cmd, void *args, int flags)
+{
+    switch (cmd)
+    {
+    case DEV_CMD_SECTOR_START:
+        return 0;
+    case DEV_CMD_SECTOR_COUNT:
+        return disk->total_lba;
+    default:
+        panic("device command %d can't recognize!!!", cmd);
+        break;
+    }
 }
 
 // 读分区
@@ -320,6 +337,21 @@ int ide_pio_part_read(ide_part_t* part, void* buf, u8 count, idx_t lba)
 int ide_pio_part_write(ide_part_t* part, void* buf, u8 count, idx_t lba)
 {
     return ide_pio_write(part->disk, buf, count, part->start + lba);
+}
+
+// 分区控制
+int ide_pio_part_ioctl(ide_part_t *part, int cmd, void *args, int flags)
+{
+    switch (cmd)
+    {
+    case DEV_CMD_SECTOR_START:
+        return part->start;
+    case DEV_CMD_SECTOR_COUNT:
+        return part->count;
+    default:
+        panic("device command %d can't recognize!!!", cmd);
+        break;
+    }
 }
 
 // 交换字节
@@ -479,12 +511,49 @@ static void ide_ctrl_init()
     free_kpage((u32)buf, 1);
 }
 
+static void ide_install()
+{
+    // 遍历每个控制器
+    for (size_t cidx = 0; cidx < IDE_CTRL_NR; cidx++)
+    {
+        // 遍历控制器的每个磁盘
+        ide_ctrl_t *ctrl = &controllers[cidx];
+        for (size_t didx = 0; didx < IDE_DISK_NR; didx++)
+        {
+            ide_disk_t *disk = &ctrl->disks[didx];
+            if (!disk->total_lba)
+                continue;
+            
+            // 磁盘存在就下载：块设备，磁盘、此时由于多个磁盘，需要指定 ptr 为 disk
+            dev_t dev = device_install(
+                DEV_BLOCK, DEV_IDE_DISK, disk, disk->name, 0,
+                ide_pio_ioctl, ide_pio_read, ide_pio_write);
+            
+            // 磁盘会分区，每个区也是一个设备
+            for (size_t i = 0; i < IDE_PART_NR; i++)
+            {
+                ide_part_t *part = &disk->parts[i];
+                if (!part->count)
+                    continue;
+
+                // 块大小不为 0 时注册
+                // 跨设备、分区、指针指向本身
+                device_install(
+                    DEV_BLOCK, DEV_IDE_PART, part, part->name, dev,
+                    ide_pio_part_ioctl, ide_pio_part_read, ide_pio_part_write);
+            }
+        }
+    }
+}
+
 // ide 硬盘初始化
 void ide_init()
 {
     LOGK("ide init...\n");
     // 控制器初始化
     ide_ctrl_init();
+
+    ide_install();
 
     // 注册中断函数
     set_interrupt_handler(IRQ_HARDDISK, ide_handler);

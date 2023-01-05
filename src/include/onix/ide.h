@@ -12,6 +12,38 @@
 #define IDE_CTRL_NR 2
 // 每个控制器可以挂载盘数量，固定为 2
 #define IDE_DISK_NR 2
+// 每个磁盘分区数量，只支持主分区，总共 4 个
+#define IDE_PART_NR 4
+
+typedef struct part_entry_t
+{
+    u8 bootable;             // 引导标志
+    u8 start_head;           // 分区起始磁头号
+    u8 start_sector : 6;     // 分区起始扇区号
+    u16 start_cylinder : 10; // 分区起始柱面号
+    u8 system;               // 分区类型字节
+    u8 end_head;             // 分区的结束磁头号
+    u8 end_sector : 6;       // 分区结束扇区号
+    u16 end_cylinder : 10;   // 分区结束柱面号
+    u32 start;               // 分区起始物理扇区号 LBA
+    u32 count;               // 分区占用的扇区数
+} _packed part_entry_t;
+
+typedef struct boot_sector_t
+{
+    u8 code[446];
+    part_entry_t entry[4];
+    u16 signature;
+} _packed boot_sector_t;
+
+typedef struct ide_part_t
+{
+    char name[8];            // 分区名称
+    struct ide_disk_t *disk; // 磁盘指针
+    u32 system;              // 分区类型
+    u32 start;               // 分区起始物理扇区号 LBA
+    u32 count;               // 分区占用的扇区数
+} ide_part_t;
 
 // IDE 磁盘
 typedef struct ide_disk_t
@@ -24,6 +56,7 @@ typedef struct ide_disk_t
     u32 cylinders;          // 柱面数
     u32 heads;              // 磁头数
     u32 sectors;            // 扇区数
+    ide_part_t parts[IDE_PART_NR]; // 硬盘分区
 } ide_disk_t;
 
 // IDE 控制器

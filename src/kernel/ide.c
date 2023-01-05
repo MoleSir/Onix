@@ -62,6 +62,15 @@
 #define IDE_LBA_MASTER 0b11100000 // 主盘 LBA
 #define IDE_LBA_SLAVE 0b11110000  // 从盘 LBA
 
+// 分区文件系统
+typedef enum PART_FS
+{
+    PART_FS_FAT12 = 1, 
+    PART_FS_EXTENDED = 5,
+    PART_FS_MINIX = 0x80,
+    PART_FS_LINUX = 0x83,
+} PART_FS;
+
 typedef struct ide_params_t
 {
     u16 config;                 // 0 General configuration bits
@@ -301,6 +310,19 @@ int ide_pio_write(ide_disk_t* disk, void* buf, u8 count, idx_t lba)
     return 0;
 }
 
+// 读分区
+int ide_pio_part_read(ide_part_t* part, void* buf, u8 count, idx_t lba)
+{
+    return ide_pio_read(part->disk, buf, count, part->start + lba);
+}
+
+// 写分区
+int ide_pio_part_write(ide_part_t* part, void* buf, u8 count, idx_t lba)
+{
+    return ide_pio_write(part->disk, buf, count, part->start + lba);
+}
+
+// 交换字节
 static void ide_swap_pairs(char *buf, u32 len)
 {
     for (size_t i = 0; i < len; i += 2)
@@ -329,30 +351,82 @@ static u32 ide_identify(ide_disk_t *disk, u16 *buf)
     LOGK("disk %s total lba %d\n", disk->name, params->total_lba);
 
     u32 ret = EOF;
-    if (params->total_lba == 0)
+    if (params->total_lba != 0)
     {
-        goto rollback;
+        ide_swap_pairs(params->serial, sizeof(params->serial));
+        LOGK("disk %s serial number %s\n", disk->name, params->serial);
+
+        ide_swap_pairs(params->firmware, sizeof(params->firmware));
+        LOGK("disk %s firmware version %s\n", disk->name, params->firmware);
+
+        ide_swap_pairs(params->model, sizeof(params->model));
+        LOGK("disk %s model number %s\n", disk->name, params->model);
+
+        disk->total_lba = params->total_lba;
+        disk->cylinders = params->cylinders;
+        disk->heads = params->heads;
+        disk->sectors = params->sectors;
+
+        ret = 0;
     }
 
-    ide_swap_pairs(params->serial, sizeof(params->serial));
-    LOGK("disk %s serial number %s\n", disk->name, params->serial);
-
-    ide_swap_pairs(params->firmware, sizeof(params->firmware));
-    LOGK("disk %s firmware version %s\n", disk->name, params->firmware);
-
-    ide_swap_pairs(params->model, sizeof(params->model));
-    LOGK("disk %s model number %s\n", disk->name, params->model);
-
-    disk->total_lba = params->total_lba;
-    disk->cylinders = params->cylinders;
-    disk->heads = params->heads;
-    disk->sectors = params->sectors;
-
-    ret = 0;
-
-rollback:
     lock_release(&(disk->ctrl->lock));
     return ret;
+}
+
+static void ide_part_init(ide_disk_t *disk, u16 *buf)
+{
+    // 磁盘不可用
+    if (!disk->total_lba)
+        return;
+
+    // 读取主引导扇区
+    ide_pio_read(disk, buf, 1, 0);
+
+    // 初始化主引导扇区
+    boot_sector_t *boot = (boot_sector_t *)buf;
+
+    for (size_t i = 0; i < IDE_PART_NR; i++)
+    {
+        part_entry_t *entry = &boot->entry[i];
+        ide_part_t *part = &disk->parts[i];
+        if (!entry->count)
+            continue;
+
+        sprintf(part->name, "%s%d", disk->name, i + 1);
+
+        LOGK("part %s \n", part->name);
+        LOGK("    bootable %d\n", entry->bootable);
+        LOGK("    start %d\n", entry->start);
+        LOGK("    count %d\n", entry->count);
+        LOGK("    system 0x%x\n", entry->system);
+
+        part->disk = disk;
+        part->count = entry->count;
+        part->system = entry->system;
+        part->start = entry->start;
+
+        // 如果是扩展分区，还能再划分
+        if (entry->system == PART_FS_EXTENDED)
+        {
+            LOGK("Unsupported extended partition!!!\n");
+
+            boot_sector_t *eboot = (boot_sector_t *)(buf + SECTOR_SIZE);
+            ide_pio_read(disk, (void *)eboot, 1, entry->start);
+
+            for (size_t j = 0; j < IDE_PART_NR; j++)
+            {
+                part_entry_t *eentry = &eboot->entry[j];
+                if (!eentry->count)
+                    continue;
+                LOGK("part %d extend %d\n", i, j);
+                LOGK("    bootable %d\n", eentry->bootable);
+                LOGK("    start %d\n", eentry->start);
+                LOGK("    count %d\n", eentry->count);
+                LOGK("    system 0x%x\n", eentry->system);
+            }
+        }
+    }
 }
 
 static void ide_ctrl_init()
@@ -399,6 +473,7 @@ static void ide_ctrl_init()
             }
             BMB;
             ide_identify(disk, buf);
+            ide_part_init(disk, buf);
         }
     }
     free_kpage((u32)buf, 1);

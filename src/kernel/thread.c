@@ -31,7 +31,7 @@ static void user_init_thread()
     u32 counter = 0;
     while (true)
     {
-        printf("user init thread %d, %d, %d\n", getpid(), getppid(), counter++);
+        //printf("user init thread %d, %d, %d\n", getpid(), getppid(), counter++);
         sleep(1000);
     }
 }
@@ -50,7 +50,6 @@ void test_thread()
 
     while (true)
     {
-        printk("task thread %d, %d, %d\n", getpid(), getppid(), counter++);
-        sleep(2000);
+        test();
     }
 }

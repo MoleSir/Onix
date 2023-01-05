@@ -21,18 +21,18 @@ static buffer_t* buffer_ptr = (buffer_t*)KERNEL_BUFFER_MEM;
 // 记录当前数据缓冲区位置
 static void* buffer_data = (void*)(KERNEL_BUFFER_MEM + KERNEL_BUFFER_SIZE - BLOCK_SIZE);
 
-// 缓存链表，被释放的块
+// 缓冲链表，被释放的块
 static list_t free_list;
 // 等待进行链表
 static list_t wait_list;
-// 缓存哈希表
+// 缓冲哈希表
 static list_t hash_table[HASH_COUNT];
 
 // 哈希函数，参数是：设备号和块号
 u32 hash(dev_t dev, idx_t block)
 {
     // 最大也只能是 HASH_COUNT
-    return (dev ^ block) & HASH_COUNT;
+    return (dev ^ block) % HASH_COUNT;
 }
 
 static buffer_t* get_from_hash_table(dev_t dev, idx_t block)
@@ -57,7 +57,7 @@ static buffer_t* get_from_hash_table(dev_t dev, idx_t block)
     if (!bf)
         return NULL;
 
-    // bf 存在缓存列表，移除
+    // bf 存在缓冲列表，移除
     if (list_search(&free_list, &(bf->rnode)))
         list_remove(&(bf->rnode));
 
@@ -140,7 +140,7 @@ buffer_t* getblk(dev_t dev, idx_t block)
     if (bf)
         return bf;
 
-    // 哈希表没有找到 dev 设备的 block 块缓存，尝试去构建一个
+    // 哈希表没有找到 dev 设备的 block 块缓冲，尝试去构建一个
     bf = get_free_buffer();
     assert(bf->count == 0);
     assert(bf->dirty == 0);
@@ -149,7 +149,7 @@ buffer_t* getblk(dev_t dev, idx_t block)
     bf->count = 1;
     bf->dev = dev;
     bf->block = block;
-    // 把创建好的缓存放入哈希表中
+    // 把创建好的缓冲放入哈希表中
     hash_locate(bf);
     return bf;
 }

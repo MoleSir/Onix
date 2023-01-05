@@ -122,6 +122,7 @@ void device_init()
         device->write = NULL;
 
         list_init(&(device->request_list));
+        device->direct = DIRECT_UP;
     }
 }
 
@@ -142,6 +143,33 @@ static void do_request(request_t *req)
         panic("req type %d unknown!!!");
         break;
     }
+}
+
+// 获得下一个请求
+static request_t* request_next_req(device_t* device, request_t* req)
+{
+    list_t* list = &(device->request_list);
+
+    // 调度到最大的磁道，更改方向
+    if (device->direct == DIRECT_UP && req->node.next == &(list->tail))
+        device->direct = DIRECT_DOWN;
+    // 调度到早小的磁道，更改方向
+    else if (device->direct == DIRECT_DOWN && req->node.prve == &(list->head))
+        device->direct = DIRECT_UP;
+
+    void* next = NULL;
+    // 如果磁道方向向上，就取当前的下一个请求
+    if (device->direct == DIRECT_UP)
+        next = req->node.next;
+    // 如果磁道方向向下，就取当前的上一个请求
+    else
+        next = req->node.prve;
+    
+    // 已经没有请求，返回空
+    if (next == &(list->head) || next == &(list->tail))
+        return NULL;
+
+    return element_entry(request_t, node, next);
 }
 
 // 块设备请求
@@ -168,8 +196,11 @@ void device_request(dev_t dev, void *buf, u8 count, idx_t idx, int flags, u32 ty
     // 判断当前设备的请求列表是否为空
     bool empty = list_empty(&device->request_list);
 
-    // 将请求压入链表，插入到第一个
-    list_push(&device->request_list, &req->node);
+    // 将请求插入链表
+    list_insert_sort(
+        &(device->request_list), &(req->node),
+        element_node_offset(request_t, node, idx)
+    );
 
     // 如果列表不为空，则阻塞，因为已经有请求在处理了，等待处理完成；
     if (!empty)
@@ -181,15 +212,17 @@ void device_request(dev_t dev, void *buf, u8 count, idx_t idx, int flags, u32 ty
     // 阻塞解开或链表为空，可用处理这个请求
     do_request(req);
 
+    // 获得下一关请求
+    request_t* next_req = request_next_req(device, req);
+
     // 处理完，释放节点，释放内存空间
     list_remove(&req->node);
     kfree(req);
 
     // 如果此时链表还有请求，就唤醒最后一个——先来先服务策略
-    if (!list_empty(&(device->request_list)))
+    if (next_req)
     {
-        request_t* nextreq = element_entry(request_t, node, device->request_list.tail.prve);
-        assert(nextreq->task->magic == ONIX_MAGIC);
-        task_unblock(nextreq->task);
+        assert(next_req->task->magic == ONIX_MAGIC);
+        task_unblock(next_req->task);
     }
 }

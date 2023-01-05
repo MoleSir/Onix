@@ -115,3 +115,26 @@ u32 list_size(list_t* list)
     }   
     return size;
 }
+
+// 按排序插入
+void list_insert_sort(list_t* list, list_node_t* node, int offset)
+{
+    list_node_t* anchor = &(list->tail);
+    int key = element_node_key(node, offset);
+
+    for (list_node_t* ptr = list->head.next; ptr != &(list->tail); ptr = ptr->next)
+    {
+        int compare = element_node_key(ptr, offset);
+        if (compare > key)
+        {
+            anchor = ptr;
+            break;
+        }
+    }
+
+    assert(node->next == NULL);
+    assert(node->prve == NULL);
+
+    // 插入
+    list_insert_before(anchor, node);
+}

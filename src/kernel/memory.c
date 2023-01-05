@@ -24,9 +24,17 @@
 #define PAGE(idx) ((u32)idx << 12)
 #define ASSERT_PAGE(addr) assert((addr & 0xfff) == 0)
 
-#define KERNEL_MAP_BITS 0x4000
+#define KERNEL_MAP_BITS 0x6000
 
 #define PDE_MASK 0xffc00000
+
+// 内核页表索引
+static u32 KERNEL_PAGE_TABLE[] = {
+    0x2000,
+    0x3000,
+    0x4000,
+    0x5000,
+};
 
 // 内核内存大小
 #define KERNEL_MEMORY_SIZE (0x100000 * sizeof(KERNEL_PAGE_TABLE))
@@ -494,8 +502,8 @@ page_entry_t* copy_pde()
 
     // 遍历页目录，拷贝已经存在的页表，遍历的是子进程的页目录，其中的内容跟父进程一致
     page_entry_t* dentry;
-    // 0、1 是内核态占据的 8M 内存
-    for (size_t didx = 2; didx < 1023; ++didx)
+    // 0、1、2、3 是内核态占据的 16M 内存
+    for (size_t didx = (sizeof(KERNEL_PAGE_TABLE) / 4); didx < 1023; ++didx)
     {
         // 两个页目录，内容完全一致
         dentry = pde + didx;
@@ -544,7 +552,7 @@ void free_pde()
 
     page_entry_t* pde = get_pde();
 
-    for (size_t didx = 2; didx < 1023; didx++)
+    for (size_t didx = (sizeof(KERNEL_PAGE_TABLE) / 4); didx < 1023; didx++)
     {
         page_entry_t* dentry = pde + didx;
         if (!dentry->present)
@@ -660,7 +668,7 @@ int32 sys_brk(void* addr)
     task_t* task = running_task();
     assert(task->uid != KERNEL_USER);
 
-    assert(KERNEL_MEMORY_SIZE < brk < USER_STACK_BUTTOM);
+    assert(KERNEL_MEMORY_SIZE <= brk && brk <= USER_STACK_BUTTOM);
 
     u32 old_brk = task->brk;
 

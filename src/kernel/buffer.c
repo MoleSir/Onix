@@ -193,7 +193,7 @@ void brelse(buffer_t* bf)
 
     bf->count--;
     assert(bf->count >= 0);
-    if (bf->count) // 还有人用，直接返回
+    if (bf->count)
         return;
 
     assert(!bf->rnode.next);

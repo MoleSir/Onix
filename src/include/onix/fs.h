@@ -9,6 +9,8 @@
 #define BLOCK_SIZE 1024
 // 扇区大小
 #define SECTOR_SIZE 512
+// 块的 bit 数量
+#define BLOCK_BITS (BLOCK_SIZE * 8)
 
 // 文件系统魔数
 #define MINIX1_MAGIC 0x137f
@@ -71,5 +73,29 @@ typedef struct dentry_t
     u16 nr;                 // i 节点
     char name[NAME_LEN];    // 文件名称
 } dentry_t;
+
+// 获取设备 dev 的超级快
+super_block_t* get_super(dev_t dev);
+
+// 读设备 dev 的超级块
+super_block_t* read_super(dev_t dev);
+
+// 挂载根文件系统
+void mount_root();
+
+
+
+// 分配一个文件块
+idx_t balloc(dev_t dev);
+
+// 释放一个文件块
+void bfree(dev_t dev, idx_t idx);
+
+// 分配一个文件系统 inode
+idx_t ialloc(dev_t dev);
+
+// 释放一个文件系统 inode
+void ifree(dev_t dev, idx_t idx);
+
 
 #endif

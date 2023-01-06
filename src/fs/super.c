@@ -7,64 +7,113 @@
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
-void super_init()
+#define SUPER_NR 16
+
+// 超级块表，一个超级块描述一个文件系统，所以系统支持 SUPER_NR 个文件系统挂载
+static super_block_t super_table[SUPER_NR];
+// 根文件系统超级块
+static super_block_t* root;
+
+// 从超级块表查找一个空闲块
+static super_block_t* get_free_super()
 {
-    // 找到磁盘的第0个分区，这个分区的 0 块是 bootloader，第 1 块是超级块
-    device_t* device = device_find(DEV_IDE_PART, 0);
-    assert(device);
-
-    // 读取超级块与 bootloader
-    buffer_t* boot = bread(device->dev, 0);
-    buffer_t* super = bread(device->dev, 1);
-
-    // 解释为超级块
-    super_desc_t* sb = (super_desc_t*)(super->data);
-    assert(sb->magic == MINIX1_MAGIC);
-
-    // inode 位图位于第 2 块
-    buffer_t* imap = bread(device->dev, 2);
-    
-    // 块位图位于 inode 后一块，需要加上 inode 的大小
-    buffer_t* zmap = bread(device->dev, 2 + sb->imap_block);
-
-    // 读取第一个 inode 块
-    buffer_t* buf1 = bread(device->dev, 2 + sb->imap_block + sb->zmap_block);
-    inode_desc_t* inode = (inode_desc_t*)(buf1->data);
-
-    // 读取第一个文件的第 0 块
-    buffer_t* buf2 = bread(device->dev, inode->zone[0]);
-
-    // 第一个文件是根目录，解释为 dentry_t
-    dentry_t* dir = (dentry_t*)(buf2->data);
-    inode_desc_t* helloi = NULL;
-    // 依次查找 dir 中的每一个 dentry_t 表项
-    while (dir->nr)
+    for (size_t i = 0; i < SUPER_NR; ++i)
     {
-        LOGK("inode %04d, name %s\n", dir->nr, dir->name);
-        if (!strcmp(dir->name, "hello.txt"))
-        {
-            // 得到文件的 inode 数组索引，到其中数组查找，索引的 1 代表地址上的 0，因为 0 号索引代表结束
-            helloi = (inode_desc_t*)(buf1->data) + (dir->nr - 1);
-            strcpy(dir->name, "word.txt");
-        }
-        dir++;
+        super_block_t* sb = super_table + i;
+        if (sb->dev == EOF)
+            return sb;
+    }
+    panic("no more super block!!!");
+}
+
+// 获取设备 dev 的超级快
+super_block_t* get_super(dev_t dev)
+{
+    for (size_t i = 0; i < SUPER_NR; ++i)
+    {
+        super_block_t* sb = super_table + i;
+        if (sb->dev == dev)
+            return sb;
+    }
+    return NULL;
+}
+
+// 读设备 dev 的超级块
+super_block_t* read_super(dev_t dev)
+{
+    // 检查 dev 的超级块是否已经被添加过
+    super_block_t* sb = get_super(dev);
+    if (sb)
+        return sb;
+
+    LOGK("Reading super block of device %d\n", dev);
+
+    // 获得一个空的块
+    sb = get_free_super();
+
+    // 设备的第一块作为超级块（0 是 boot）
+    buffer_t* buf = bread(dev, 1);
+
+    // 设置超级块信息
+    sb->buf = buf;
+    sb->desc = (super_desc_t*)(buf->data);
+    sb->dev = dev;
+
+    assert(sb->desc->magic == MINIX1_MAGIC);
+
+    memset(sb->imaps, 0, sizeof(sb->imaps));
+    memset(sb->zmaps, 0, sizeof(sb->zmaps));
+
+    // 超级块中的信息指明了位图的位置，但具体的内容还是需要再读取
+    // 读取 inode ，位快图索引从 2 开始，0 是引导、1 是超级块
+    int idx = 2;
+    // 读取 imap_block 个块
+    for (int i = 0; i < sb->desc->imap_block; ++i)
+    {
+        assert(i < IMAP_NR);
+        if ((sb->imaps[i] = bread(dev, idx)))
+            idx++;
+        else    
+            break;
     }
 
-    // 根据文件 inode 保存的块号，读取文件内容
-    buffer_t* buf3 = bread(device->dev, helloi->zone[0]);
-    LOGK("content %s", buf3->data);
+    // 读块位图，读取 zmap_block 个块
+    for (int i = 0; i < sb->desc->zmap_block; ++i)
+    {
+        assert(i < IMAP_NR);
+        if ((sb->zmaps[i] = bread(dev, idx)))
+            idx++;
+        else    
+            break;
+    }
 
-    // 修改文件，重新把文件数据写回块
-    strcpy(buf3->data, "This is modified context!!!\n");
-    buf3->dirty = true;
-    bwrite(buf3);
+    return sb;
+}
 
-    // 文件内容改变，inode 中的数据也需要改，重新写 inode 
-    helloi->size = strlen(buf3->data);
-    buf1->dirty = true;
-    bwrite(buf1);
+// 挂载根文件系统
+void mount_root()
+{
+    LOGK("Mount root file system...\n");
 
-    // 文件名称被修改，保存文件的文件目录内容被修改
-    buf2->dirty = true;
-    bwrite(buf2);
+    // 读取磁盘的超级块信息
+    device_t* device = device_find(DEV_IDE_PART, 0);
+    assert(device);
+    // 传入磁盘设备号读取
+    root = read_super(device->dev);
+}
+
+void super_init()
+{
+    for (size_t i = 0; i < SUPER_NR; ++i)
+    {
+        super_block_t* sb = super_table + i;
+        sb->dev = EOF;
+        sb->desc = NULL;
+        sb->buf = NULL;
+        sb->iroot = NULL;
+        sb->imount = NULL;
+        list_init(&(sb->inode_list));
+    }
+
+    mount_root();
 }

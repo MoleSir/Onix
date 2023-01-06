@@ -36,9 +36,6 @@ static u32 KERNEL_PAGE_TABLE[] = {
     0x5000,
 };
 
-// 内核内存大小
-#define KERNEL_MEMORY_SIZE (0x100000 * sizeof(KERNEL_PAGE_TABLE))
-
 bitmap_t kernel_map;
 
 typedef struct ards_t
@@ -606,7 +603,7 @@ void page_fault(
     u32 vaddr = get_cr2();
     LOGK("fault address 0x%p\n", vaddr);
 
-    page_error_code_t* code = (page_entry_t*)(&error);
+    page_error_code_t* code = (page_error_code_t*)(&error);
     task_t* task = running_task();
     
     assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);

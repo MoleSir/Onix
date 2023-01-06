@@ -175,6 +175,8 @@ static void command_lf()
     scroll_up();
 }
 
+extern void start_beep();
+
 int32 console_write(void* dev, char* buf, u32 count)
 {
     bool intr = interrupt_disable();

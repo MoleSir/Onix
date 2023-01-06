@@ -8,6 +8,7 @@
 #include <onix/ide.h>
 #include <onix/device.h>
 #include <onix/buffer.h>
+#include <string.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 

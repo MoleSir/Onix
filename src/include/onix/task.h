@@ -83,6 +83,7 @@ typedef struct intr_frame_t
     u32 ss;
 } intr_frame_t;
 
+void task_yield();
 void task_exit(int status);
 pid_t task_fork();
 pid_t task_waitpid(pid_t pid, int32* status);

@@ -36,7 +36,7 @@ static void* get_arena_block(arena_t* arena, u32 idx)
 
     // 偏移量 = 下标 * 每块的大小
     u32 gap = idx * (arena->desc->block_size);
-    return (u32)addr + gap; 
+    return (void*)((u32)addr + gap); 
 }
 
 // 通过某个内存对应的 arena 结构体指针

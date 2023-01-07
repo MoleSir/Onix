@@ -233,12 +233,14 @@ static task_t* task_create(target_t target, const char* name, u32 priority, u32 
     task->jiffies = 0;
     task->state = TASK_REDAY;
     task->uid = uid;
+    task->gid = 0;
     task->vmap = &kernel_map;
     task->pde = KERNEL_PAGE_DIR;
     task->brk = KERNEL_MEMORY_SIZE;
     task->magic = ONIX_MAGIC;
     task->iroot = get_root_inode();
     task->ipwd = get_root_inode();
+    task->umask = 0022; // 对应 0755
 
     return task;
 }

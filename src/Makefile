@@ -62,6 +62,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/arena.o \
 	$(BUILD)/kernel/ide.o \
 	$(BUILD)/kernel/buffer.o \
+	$(BUILD)/kernel/system.o \
 	$(BUILD)/fs/bmap.o \
 	$(BUILD)/fs/super.o \
 	$(BUILD)/fs/inode.o \

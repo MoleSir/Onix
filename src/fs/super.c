@@ -106,20 +106,6 @@ void mount_root()
     root->iroot = iget(device->dev, 1);
     // 根据目录挂载 inode，就是根目录本身
     root->imount = iget(device->dev, 1);
-
-    idx_t idx = 0;
-    inode_t* inode = iget(device->dev, 1);
-
-    // 直接块
-    idx = bmap(inode, 3, true);
-
-    // 一级间接块
-    idx = bmap(inode, 7 + 7, true);
-
-    // 二级间接块
-    idx = bmap(inode, 7 + 512 * 3 + 510, true);
-
-    iput(inode);
 }
 
 void super_init()

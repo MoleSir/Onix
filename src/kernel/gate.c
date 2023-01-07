@@ -63,6 +63,7 @@ extern pid_t sys_getpid();
 extern pid_t sys_getppid();
 extern void task_yield();
 extern u32 sys_time();
+extern mode_t sys_umask(mode_t mask);
 
 void syscall_init()
 {
@@ -82,4 +83,5 @@ void syscall_init()
     syscall_table[SYS_NR_YIELD] = task_yield;
     syscall_table[SYS_NR_GETPID] = sys_getpid;
     syscall_table[SYS_NR_GETPPID] = sys_getppid;
+    syscall_table[SYS_NR_UMASK] = sys_umask;
 }

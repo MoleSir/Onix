@@ -116,6 +116,9 @@ void iput(inode_t* inode)
     if (!inode)
         return;
     
+    if (inode->buf->dirty)
+        bwrite(inode->buf);
+
     // 应用计数减一
     inode->count--;
     if (inode->count)

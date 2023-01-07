@@ -23,7 +23,7 @@
 // 块 inode 数量
 #define BLOCK_INODES (BLOCK_SIZE / sizeof(inode_desc_t))
 // 块 dentry 数量
-#define BLOCK_ENTRYS (BLOCK_SIZE / sizeof(dentry_t))
+#define BLOCK_DENTRIES (BLOCK_SIZE / sizeof(dentry_t))
 // 块索引数量
 #define BLOCK_INDEXES (BLOCK_SIZE / sizeof(u16))
 
@@ -35,6 +35,12 @@
 #define INDIRECT2_BLOCK (INDIRECT1_BLOCK * INDIRECT1_BLOCK)
 // 全部块数量
 #define TOTAL_BLOCK (DIRECT_BLOCK + INDIRECT1_BLOCK + INDIRECT2_BLOCK)
+
+// 目录分割符
+#define SEPARATOR1 '/'
+#define SEPARATOR2 '\\'
+// 判断字符是否为分割符
+#define IS_SEPARATOR(c) (c == SEPARATOR1 || c == SEPARATOR2)
 
 typedef struct inode_desc_t
 {

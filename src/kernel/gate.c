@@ -30,8 +30,12 @@ static void sys_default()
 static task_t* task = NULL;
 
 extern ide_ctrl_t controllers[IDE_CTRL_NR];
+extern void dir_test();
+
 static u32 sys_test()
-{   
+{
+    dir_test();
+    
     char ch;
     device_t* device;
 

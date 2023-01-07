@@ -138,7 +138,10 @@ buffer_t* getblk(dev_t dev, idx_t block)
     // 先从已经创建好的哈希表中找
     buffer_t* bf = get_from_hash_table(dev, block);
     if (bf)
+    {
+        assert(bf->vaild);
         return bf;
+    }
 
     // 哈希表没有找到 dev 设备的 block 块缓冲，尝试去构建一个
     bf = get_free_buffer();

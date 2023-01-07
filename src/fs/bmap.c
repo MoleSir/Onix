@@ -6,7 +6,7 @@
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
-// 分配一个文件块
+// 分配一个文件块，只是根据位图得到空闲块的索引，并没有真正读取磁盘
 idx_t balloc(dev_t dev)
 {
     super_block_t* sb = get_super(dev);
@@ -69,7 +69,7 @@ void bfree(dev_t dev, idx_t idx)
     bwrite(buf);
 }
 
-// 分配一个文件系统 inode
+// 分配一个文件系统 inode，只是根据位图得到空闲 inode 块的索引，并没有真正读取磁盘
 idx_t ialloc(dev_t dev)
 {
     super_block_t* sb = get_super(dev);

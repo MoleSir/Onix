@@ -20,6 +20,22 @@
 #define IMAP_NR 8
 #define ZMAP_NR 8
 
+// 块 inode 数量
+#define BLOCK_INODES (BLOCK_SIZE / sizeof(inode_desc_t))
+// 块 dentry 数量
+#define BLOCK_ENTRYS (BLOCK_SIZE / sizeof(dentry_t))
+// 块索引数量
+#define BLOCK_INDEXES (BLOCK_SIZE / sizeof(u16))
+
+// 直接块数量
+#define DIRECT_BLOCK (7)
+// 一级间接块数量
+#define INDIRECT1_BLOCK BLOCK_INDEXES
+// 二级间接块数量
+#define INDIRECT2_BLOCK (INDIRECT1_BLOCK * INDIRECT1_BLOCK)
+// 全部块数量
+#define TOTAL_BLOCK (DIRECT_BLOCK + INDIRECT1_BLOCK + INDIRECT2_BLOCK)
+
 typedef struct inode_desc_t
 {
     u16 mode;       // 文件类型和属性
@@ -63,7 +79,7 @@ typedef struct super_block_t
     struct buffer_t* imaps[IMAP_NR];// inode 位图缓冲
     struct buffer_t* zmaps[ZMAP_NR];// 块位图缓冲
     dev_t dev;                      // 设备号
-    list_t inode_list;              // 使用中的 inode 链表
+    list_t inode_list;              // 该文件系统中使用中的 inode 链表
     inode_t* iroot;                 // 根目录的 inode
     inode_t* imount;                // 安装到的 inode
 } super_block_t;
@@ -83,8 +99,6 @@ super_block_t* read_super(dev_t dev);
 // 挂载根文件系统
 void mount_root();
 
-
-
 // 分配一个文件块
 idx_t balloc(dev_t dev);
 
@@ -97,5 +111,16 @@ idx_t ialloc(dev_t dev);
 // 释放一个文件系统 inode
 void ifree(dev_t dev, idx_t idx);
 
+// 获取 inode 第 block 块索引，如果不存在，并且 create 为 true 则创建
+idx_t bmap(inode_t* inode, idx_t blokc, bool create);
+
+// 获取根目录的 inode
+inode_t* get_root_inode();
+
+// 获得设备 dev 的 nr indoe
+inode_t* iget(dev_t dev, idx_t nr);
+
+// 释放 inode
+void iput(inode_t* inode);
 
 #endif

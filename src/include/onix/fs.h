@@ -110,6 +110,15 @@ typedef struct dentry_t
     char name[NAME_LEN];    // 文件名称
 } dentry_t;
 
+typedef struct file_t
+{
+    inode_t* inode;     // 文件 inode
+    u32 count;          // 引用计数，多少进程打开了文件
+    off_t offset;       // 文件偏移
+    int flags;          // 文件标记
+    int mode;           // 文件模式
+} file_t;
+
 // 获取设备 dev 的超级快
 super_block_t* get_super(dev_t dev);
 

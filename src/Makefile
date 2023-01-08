@@ -67,6 +67,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/fs/super.o \
 	$(BUILD)/fs/inode.o \
 	$(BUILD)/fs/namei.o \
+	$(BUILD)/fs/file.o \
 	$(BUILD)/lib/string.o \
 	$(BUILD)/lib/vsprintf.o \
 	$(BUILD)/lib/stdlib.o \

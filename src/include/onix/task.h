@@ -10,6 +10,7 @@
 #define NORMAL_USER 1000
 
 #define TASK_NAME_LEN 16
+#define TASK_FILE_NR 16
 
 typedef void (*target_t)();
 
@@ -26,26 +27,27 @@ typedef enum task_state_t
 
 typedef struct task_t
 {
-    u32* stack;             // 内核栈
-    list_node_t node;       // 任务阻塞节点
-    task_state_t state;     // 任务状态
-    u32 priority;           // 任务优先级，每次初始化 tick 的值
-    u32 ticks;              // 剩余时间片，每次时钟后减去 1，到 0 调度
-    u32 jiffies;            // 上次执行时全局时间片
-    char name[TASK_NAME_LEN];// 任务名称
-    u32 uid;                // 用户 id
-    u32 gid;                // 用户组 id
-    pid_t pid;              // 任务 id
-    pid_t ppid;             // 父进程 id
-    u32 pde;                // 页目录物理地址
-    struct bitmap_t* vmap;  // 进出虚拟内存位图
-    u32 brk;                // 进程堆内存最高地址
-    int status;             // 进程特殊状态
-    pid_t waitpid;          // 进程等待的 pids
-    struct inode_t* ipwd;   // 进程当前的目录 inode
-    struct inode_t* iroot;  // 进程根目录 inode
-    u16 umask;              // 进程用户权限
-    u32 magic;              // 内核魔数，校验溢出
+    u32* stack;                         // 内核栈
+    list_node_t node;                   // 任务阻塞节点
+    task_state_t state;                 // 任务状态
+    u32 priority;                       // 任务优先级，每次初始化 tick 的值
+    u32 ticks;                          // 剩余时间片，每次时钟后减去 1，到 0 调度
+    u32 jiffies;                        // 上次执行时全局时间片
+    char name[TASK_NAME_LEN];           // 任务名称
+    u32 uid;                            // 用户 id
+    u32 gid;                            // 用户组 id
+    pid_t pid;                          // 任务 id
+    pid_t ppid;                         // 父进程 id
+    u32 pde;                            // 页目录物理地址
+    struct bitmap_t* vmap;              // 进出虚拟内存位图
+    u32 brk;                            // 进程堆内存最高地址
+    int status;                         // 进程特殊状态
+    pid_t waitpid;                      // 进程等待的 pids
+    struct inode_t* ipwd;               // 进程当前的目录 inode
+    struct inode_t* iroot;              // 进程根目录 inode
+    u16 umask;                          // 进程用户权限
+    struct file_t* files[TASK_FILE_NR]; // 进程文件表
+    u32 magic;                          // 内核魔数，校验溢出
 } task_t;
 
 typedef struct task_frame_t

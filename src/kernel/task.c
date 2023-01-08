@@ -60,6 +60,28 @@ pid_t sys_getppid()
     return task->ppid;
 }
 
+// 获得当前进程的第一个空闲
+fd_t task_get_fd(task_t* task)
+{
+    fd_t i;
+    for (i = 3; i < TASK_FILE_NR; i++)
+    {
+        if (!(task->files[i]))
+            break;
+    }
+    if (1 == TASK_FILE_NR)
+        panic("Exceed task max open files.");
+    return i;
+}
+
+void task_put_fd(task_t* task, fd_t fd)
+{
+    if (fd < 3)
+        return;
+    assert(fd < TASK_FILE_NR);
+    task->files[fd] == NULL;
+}
+
 extern pid_t sys_getppid();
 
 // 从任务数组中查找到某种状态的任务，自己除外

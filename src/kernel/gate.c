@@ -34,8 +34,6 @@ extern void dir_test();
 
 static u32 sys_test()
 {
-    dir_test();
-    
     char ch;
     device_t* device;
 
@@ -68,6 +66,8 @@ extern pid_t sys_getppid();
 extern void task_yield();
 extern u32 sys_time();
 extern mode_t sys_umask(mode_t mask);
+extern int sys_mkdir(char*, int);
+extern int sys_rmdir(char*);
 
 void syscall_init()
 {
@@ -88,4 +88,6 @@ void syscall_init()
     syscall_table[SYS_NR_GETPID] = sys_getpid;
     syscall_table[SYS_NR_GETPPID] = sys_getppid;
     syscall_table[SYS_NR_UMASK] = sys_umask;
+    syscall_table[SYS_NR_MKDIR] = sys_mkdir;
+    syscall_table[SYS_NR_RMDIR] = sys_rmdir;
 }

@@ -322,6 +322,211 @@ inode_t *namei(char *pathname)
     return inode;
 }
 
+// 创建一个目录
+int sys_mkdir(char* pathname, int mode)
+{
+    char* next = NULL;
+    buffer_t* ebuf = NULL;
+    // 得到需要创建目录的父目录 inode
+    inode_t* dir = named(pathname, &next);
+
+    // 父目录不存在
+    if (!dir)
+        goto rollback;
+
+    // 目录名为空
+    if (!(*next))
+        goto rollback;
+    
+    // 父目录无写权限
+    if (!permission(dir, P_WRITE))
+        goto rollback;
+    
+    char* name = next;
+    dentry_t* entry;
+
+    ebuf = find_entry(&dir, name, &next, &entry);
+    // 目录已经存在
+    if (ebuf)
+        goto rollback;
+
+    // 不存在，添加一个 dentry_t 项
+    ebuf = add_entry(dir, name, &entry);
+    ebuf->dirty = true;
+    // 申请一个 inode 节点
+    entry->nr = ialloc(dir->dev);
+
+    task_t* task = running_task();
+    // 读入新申请的 inode
+    inode_t* inode = iget(dir->dev, entry->nr);
+    inode->buf->dirty = true;
+
+    inode->desc->gid = task->gid;
+    inode->desc->uid = task->uid;
+    inode->desc->mode = (mode & 0777 & ~(task->umask)) | IFDIR;
+    // 默认新增一个目录都有上一个目录 .. 与当前文件 . 两个 dentry_t
+    inode->desc->size = sizeof(dentry_t) * 2;
+    inode->desc->mtime = time();
+    // 有两个 dentry_t 指向这个 inode，一个是 . dentry，一个是父目录中的一项（可以找到 inode）
+    inode->desc->nlinks = 2;
+
+    // 父目录链接数量 + 1，因为多了一个目录 dentry_t，其中的 ..
+    dir->buf->dirty = true;
+    dir->desc->nlinks++;
+
+    // 申请一个文件块，写入 inode 目录中的默认目录项（两个 . 于 ..）
+    buffer_t* zbuf = bread(inode->dev, bmap(inode, 0, true));
+    zbuf->dirty = true;
+
+    // 获得 inode 文件内容所在文件块的缓冲
+    entry = (dentry_t*)(zbuf->data);
+
+    // 配置两个 dentry_t：名称与指向的 inode 索引号
+    strcpy(entry->name, ".");
+    // 指向本身
+    entry->nr = inode->nr;
+
+    strcpy(entry->name, "..");
+    // 指向父目录 inode
+    entry->nr = dir->nr;
+
+    iput(inode);
+    iput(dir);
+
+    brelse(ebuf);
+    brelse(zbuf);
+    return 0;
+
+rollback:
+    brelse(ebuf);
+    iput(dir);
+    return EOF;
+}
+
+// 判断 inode 所指向的目录是否为空目录：只有 . 与 ..
+static bool is_empty(inode_t* inode)
+{
+    assert(ISDIR(inode->desc->mode));
+
+    // 目录项数量
+    int entries = inode->desc->size / sizeof(dentry_t);
+    if (entries < 2 || !inode->desc->zone[0])
+    {
+        LOGK("bad directory on dev\n", inode->dev);
+        return false;
+    }
+
+    idx_t i = 0;
+    idx_t block = 0;
+    buffer_t* buf = NULL;
+    dentry_t* entry;
+    int count = 0;
+
+    for (; i < entries; ++i)
+    {
+        if (!buf || (u32)entry >= (u32)(buf->data) + BLOCK_SIZE)
+        {
+            brelse(buf);
+            block = bmap(inode, i / BLOCK_DENTRIES, false);
+            assert(block);
+
+            buf = bread(inode->dev, block);
+            entry = (dentry_t*)(buf->data);
+        }
+        // 计算目录中的 dentry_t 有多少有效的数量
+        if (entry->nr)
+            count++;
+    }
+
+    brelse(buf);
+
+    if (count < 2)
+    {
+        LOGK("bad directory on dev\n", inode->dev);
+        return false;   
+    }
+
+    return count == 2;
+}
+
+// 删除目录
+int sys_rmdir(char* pathname)
+{
+    char* next = NULL;
+    buffer_t* ebuf = NULL;
+    inode_t* dir = named(pathname, &next);
+    inode_t* inode = NULL;
+    int ret = EOF;
+
+    // 没有父目录
+    if (!dir)
+        goto rollback;
+
+    // 目录名为 空
+    if (!*(next))
+        goto rollback;
+    
+    // 父目录无写权限
+    if (!permission(dir, P_WRITE))
+        goto rollback;
+
+    char* name = next;
+    dentry_t* entry;
+
+    // 找到等待删除的目录的 dentry_t 结构体
+    ebuf = find_entry(&dir, name, &next, &entry);
+    // 不存在
+    if (!ebuf)
+        goto rollback;
+    
+    // 根据 dentry_t 结构体，得到该目录指向的 inode
+    inode = iget(dir->dev, entry->nr);
+    if (!inode)
+        goto rollback;
+
+    // 删除 ..
+    if (inode == dir)
+        goto rollback;
+
+    // inode 不是目录 
+    if (!ISDIR(inode->desc->mode))
+        goto rollback;
+    
+    // 判断权限
+    task_t* task = running_task();
+    if ((dir->desc->mode & ISVTX) && (task->uid != inode->desc->uid))
+        goto rollback;
+
+    if (dir->dev != inode->dev || inode->count > 1)
+        goto rollback;
+
+    if (!is_empty(inode))
+        goto rollback;
+
+    assert(inode->desc->nlinks == 2); 
+
+    inode_truncate(inode);
+    ifree(inode->dev, inode->nr);
+
+    inode->desc->nlinks = 0;
+    inode->buf->dirty = true;
+    inode->nr = 0;
+
+    dir->desc->nlinks--;
+    dir->ctime = dir->atime = dir->desc->mtime = time();
+    dir->buf->dirty = true;
+    assert(dir->desc->nlinks > 0);
+
+    entry->nr = 0;
+    ebuf->dirty = true;
+
+rollback:
+    iput(inode);
+    iput(dir);
+    brelse(ebuf);
+    return ret;    
+}
+
 #include <onix/task.h>
 
 void dir_test()

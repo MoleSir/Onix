@@ -69,6 +69,11 @@ int32 write(fd_t fd, char* buf, u32 len)
     return _syscall3(SYS_NR_WRITE, fd, (u32)buf, len);
 }
 
+int32 read(fd_t fd, char* buf, u32 len)
+{
+    return _syscall3(SYS_NR_READ, fd, (u32)buf, len);
+}
+
 pid_t getpid()
 {
     _syscall0(SYS_NR_GETPID);

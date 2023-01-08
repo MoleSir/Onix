@@ -5,6 +5,7 @@
 #include <onix/printk.h>
 #include <onix/mutex.h>
 #include <onix/arena.h>
+#include <onix/types.h>
 #include <stdio.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
@@ -28,13 +29,24 @@ extern u32 keyboard_read(char* buf, u32 count);
 
 static void user_init_thread()
 {
-    fd_t fd = open("/world.txt", O_CREAT | O_RDWR, 0755);
+    char buf[256];
+    fd_t fd;
+    int len = 0;
+    fd = open("/hello.txt", O_RDWR, 0755);
+    len = read(fd, buf, sizeof(buf));
+
+    printf("hello.txt content: %s\n", buf);
+    close(fd);
+
+    fd = open("/world.txt", O_CREAT | O_RDWR, 0755);
+    len = write(fd, buf, len);
     close(fd);
 
     while (true)
     {
-        //printf("user init thread %d, %d, %d\n", getpid(), getppid(), counter++);
-        sleep(1000);
+        char ch;
+        read(stdin, &ch, 1);
+        write(stdout, &ch, 1);
     }
 }
 
@@ -50,7 +62,6 @@ void test_thread()
     set_interrupt_state(true);
     while (true)
     {
-        test();
-        sleep(10);
+        sleep(10000);
     }
 }

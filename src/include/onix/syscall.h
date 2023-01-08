@@ -8,6 +8,7 @@ typedef enum syscall_t
     SYS_NR_TEST = 0,
     SYS_NR_EXIT = 1,
     SYS_NR_FORK = 2,
+    SYS_NR_READ = 3,
     SYS_NR_WRITE = 4,
     SYS_NR_OPEN = 5,
     SYS_NR_CLOSE = 6,
@@ -39,7 +40,8 @@ void sleep(u32 ms);
 
 int32 brk(void* addr);
 
-int32 write(fd_t fd, char* buf, u32 i);
+int32 write(fd_t fd, char* buf, u32 len);
+int32 read(fd_t fd, char* buf, u32 len);
 
 pid_t getpid();
 pid_t getppid();
@@ -57,5 +59,7 @@ int unlink(char* filename);
 fd_t open(char* filename, int flags, int mode);
 fd_t create(char* filename, int mode);
 void close(fd_t fd);
+
+
 
 #endif

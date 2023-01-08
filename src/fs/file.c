@@ -1,6 +1,8 @@
 #include <onix/fs.h>
 #include <onix/assert.h>
 #include <onix/task.h>
+#include <onix/device.h>
+#include <onix/types.h>
 
 #define FILE_NR 128
 
@@ -76,6 +78,62 @@ void sys_close(fd_t fd)
     put_file(file);
     // 释放进程文件结构体指针
     task_put_fd(task, fd);
+}
+
+u32 sys_read(fd_t fd, char* buf, u32 count)
+{
+    // 如果是输入设备
+    if (fd == stdin)
+    {
+        // 获得键盘设备，使用虚拟设备读取
+        device_t* device = device_find(DEV_KEYBOARD, 0);
+        return device_read(device->dev, buf, count, 0, 0);
+    }
+
+    // 获得文件结构体
+    task_t* task = running_task();
+    file_t* file = task->files[fd];
+    assert(file);
+    assert(count > 0);
+
+    // 如果只写，错误返回
+    if ((file->flags & O_ACCMODE) == O_WRONLY)
+        return EOF;
+
+    // 调用 inode_read 读取磁盘文件
+    inode_t* inode = file->inode;
+    int len = inode_read(inode, buf, count, file->offset);
+    if (len != EOF)
+        file->offset += len;
+    
+    return len;
+}
+
+u32 sys_write(fd_t fd, char* buf, u32 count)
+{
+    // 输出显示器
+    if (fd == stdout || fd == stderr)
+    {
+        device_t* device = device_find(DEV_CONSOLE, 0);
+        return device_write(device->dev, buf, count, 0, 0);
+    }
+
+    // 获得文件结构体
+    task_t* task = running_task();
+    file_t* file = task->files[fd];
+    assert(file);
+    assert(count > 0);
+
+    // 如果只读，错误返回
+    if ((file->flags & O_ACCMODE) == O_RDONLY)
+        return EOF;
+
+    inode_t* inode = file->inode;
+    int len = inode_write(inode, buf, count, file->offset);
+    if (len != EOF)
+        file->offset += len;
+    
+    return len;
 }
 
 void file_init()

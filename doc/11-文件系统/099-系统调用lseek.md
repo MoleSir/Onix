@@ -67,4 +67,4 @@ int sys_lseek(fd_t fd, off_t offset, int whence)
 }
 ```
 
-> 偏移设置超过总大小是没关系的，`inode_write` 可以自动拓容；
+> 偏移设置超过总大小是没关系的，`inode_write` 可以自动拓容；`inode_read` 会判断是不是超过文件大小范围；

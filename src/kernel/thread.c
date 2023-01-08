@@ -31,13 +31,16 @@ extern u32 keyboard_read(char* buf, u32 count);
 static void user_init_thread()
 {
     char buf[256];
-    memset(buf, 'A', sizeof(buf));
 
     fd_t fd;
     int len = 0;
     fd = open("/hello.txt", O_RDWR, 0755);
-    lseek(fd, 5, SEEK_SET);
-    len = write(fd, buf, sizeof(buf));
+    lseek(fd, 5, SEEK_END);
+
+    read(fd, buf, 10);
+
+    printf("%s\n", buf);
+
     close(fd);
     
     while (true)

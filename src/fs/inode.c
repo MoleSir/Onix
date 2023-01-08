@@ -258,7 +258,7 @@ int inode_read(inode_t *inode, char *buf, u32 len, off_t offset)
     return offset - begin;
 }
 
-// 从 inode 的 offset 处，将 buf 的 len 个字节写入磁盘
+// 从 inode 的 offset 处，将 buf 的 len 个字节写入磁盘，写的范围超过文件大小，会主动拓容
 int inode_write(inode_t *inode, char *buf, u32 len, off_t offset)
 {
     assert(ISFILE(inode->desc->mode));

@@ -41,6 +41,7 @@ extern int32 console_write(void* dev, char* buf, u32 count);
 
 extern u32 sys_write(fd_t fd, char* buf, u32 count);
 extern u32 sys_read(fd_t fd, char* buf, u32 count);
+extern int sys_lseek(fd_t fd, off_t offset, int whence);
 
 extern pid_t sys_getpid();
 extern pid_t sys_getppid();
@@ -84,4 +85,5 @@ void syscall_init()
     syscall_table[SYS_NR_OPEN] = sys_open;
     syscall_table[SYS_NR_CLOSE] = sys_close;
     syscall_table[SYS_NR_CREATE] = sys_create;
+    syscall_table[SYS_NR_LSEEK] = sys_lseek;
 }

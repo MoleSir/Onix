@@ -136,6 +136,39 @@ u32 sys_write(fd_t fd, char* buf, u32 count)
     return len;
 }
 
+int sys_lseek(fd_t fd, off_t offset, int whence)
+{
+    assert(fd < TASK_FILE_NR);
+    // 得到文件
+    task_t* task = running_task();
+    file_t* file = task->files[fd];
+
+    assert(file);
+    assert(file->inode);
+
+    // 根据 whence 跳转类型
+    switch (whence)
+    {
+    case SEEK_SET:
+        assert(offset >= 0);
+        file->offset = offset;
+        break;
+    case SEEK_CUR:
+        assert(file->offset + offset > 0);
+        file->offset += offset;
+        break;
+    case SEEK_END:
+        // 超过总大小也没关系，inode_write 会拓容
+        assert(file->inode->desc->size + offset >= 0);
+        file->offset = file->inode->desc->size + offset;
+        break;
+    default:
+        panic("whence not defined!!!");
+        break;
+    }
+    return file->offset;
+}
+
 void file_init()
 {
     for (size_t i = 0; i < FILE_NR; ++i)

@@ -7,6 +7,7 @@
 #include <onix/arena.h>
 #include <onix/types.h>
 #include <stdio.h>
+#include <string.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -30,18 +31,15 @@ extern u32 keyboard_read(char* buf, u32 count);
 static void user_init_thread()
 {
     char buf[256];
+    memset(buf, 'A', sizeof(buf));
+
     fd_t fd;
     int len = 0;
     fd = open("/hello.txt", O_RDWR, 0755);
-    len = read(fd, buf, sizeof(buf));
-
-    printf("hello.txt content: %s\n", buf);
+    lseek(fd, 5, SEEK_SET);
+    len = write(fd, buf, sizeof(buf));
     close(fd);
-
-    fd = open("/world.txt", O_CREAT | O_RDWR, 0755);
-    len = write(fd, buf, len);
-    close(fd);
-
+    
     while (true)
     {
         char ch;

@@ -143,3 +143,8 @@ void close(fd_t fd)
 {
     _syscall1(SYS_NR_CLOSE, (u32)fd);
 }
+
+int lseek(fd_t fd, off_t offset, int whence)
+{
+    return _syscall3(SYS_NR_LSEEK, (u32)fd, (u32)offset, (u32)whence);
+}

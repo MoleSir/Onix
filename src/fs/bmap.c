@@ -6,7 +6,7 @@
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
-// 分配一个文件块，只是根据位图得到空闲块的索引，并没有真正读取磁盘
+// 分配一个文件块，只是根据位图得到空闲块的索引，并没有真正读取磁盘，返回的是磁盘逻辑块号（相对文件快的起始块号）
 idx_t balloc(dev_t dev)
 {
     super_block_t* sb = get_super(dev);
@@ -38,7 +38,7 @@ idx_t balloc(dev_t dev)
     return bit;
 }
 
-// 释放一个文件块
+// 释放一个文件块，释放的是磁盘逻辑块号（相对文件快的起始块号）
 void bfree(dev_t dev, idx_t idx)
 {
     super_block_t* sb = get_super(dev);
@@ -70,6 +70,7 @@ void bfree(dev_t dev, idx_t idx)
 }
 
 // 分配一个文件系统 inode，只是根据位图得到空闲 inode 块的索引，并没有真正读取磁盘
+// 返回的是 inode 数组的序号
 idx_t ialloc(dev_t dev)
 {
     super_block_t* sb = get_super(dev);
@@ -98,6 +99,7 @@ idx_t ialloc(dev_t dev)
 }
 
 // 释放一个文件系统 inode
+// idx 是 inode 数组的序号
 void ifree(dev_t dev, idx_t idx)
 {
     super_block_t* sb = get_super(dev);

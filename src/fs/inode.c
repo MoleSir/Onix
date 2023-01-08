@@ -72,7 +72,8 @@ inode_t* get_root_inode()
 // 获得设备号为 dev 磁盘的 nr 号 indoe
 inode_t* iget(dev_t dev, idx_t nr)
 {
-    // 尝试在已经存在的 inode 寻找
+    // 尝试在已经存在的 inode 寻找，这里的存在是指读入内存的存在
+    // 这个函数不可以向磁盘申请一个新的 inode（位图）
     inode_t* inode = find_exist_inode(dev, nr);
     if (inode)
     {

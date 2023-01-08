@@ -655,6 +655,91 @@ rollback:
     return ret;
 }
 
+// 打开文件，返回 inode，用于系统调用 open
+inode_t *inode_open(char *pathname, int flag, int mode)
+{
+    inode_t* dir = NULL;
+    inode_t* inode = NULL;
+    buffer_t* buf = NULL;
+    dentry_t* entry = NULL;
+    char* next = NULL;
+    char* name = NULL;
+
+    // 获得父目录 inode
+    dir = named(pathname, &next);
+    if (!dir)
+        goto rollback;
+
+    // 文件名为空
+    if (!(*next))
+        goto rollback;
+
+    // 又读又写
+    if ((flag & O_TRUNC) && ((flag & O_ACCMODE) == O_RDONLY))
+        flag |= O_RDWR;
+
+    name = next;
+    // 尝试获得文件在目录中的 entry
+    buf = find_entry(&dir, name, &next, &entry);
+    
+    // 文件本来就存在
+    if (buf)
+    {
+        // 拿到文件的 inode
+        inode = iget(dir->dev, entry->nr);
+        goto makeup;
+    }
+
+    // 文件本来是不存在的
+    // 如果要求文件不存在就不创建，直接 rollback
+    if (!(flag & O_CREAT))
+        goto rollback;
+    
+    // 权限判断
+    if (!permission(dir, P_WRITE))
+        goto rollback;
+
+    // 增加一个目录项目
+    buf = add_entry(dir, name, &entry);
+    // 申请一个文件块
+    entry->nr = ialloc(dir->dev);
+    // 根据 nr 号得到 inode 
+    inode = iget(dir->dev, entry->nr);
+
+    task_t* task = running_task();
+    mode &= (0777 & (~(task->umask)));
+    mode |= IFREG;
+
+    // 配置 inode 信息
+    inode->desc->uid = task->uid;
+    inode->desc->gid = task->gid;
+    inode->desc->mode = mode;
+    inode->desc->mtime = time();
+    inode->desc->size = 0;
+    inode->desc->nlinks = 1;
+    inode->buf->dirty = true;
+    
+makeup:
+    // 目录文件或权限不足
+    if (ISDIR(inode->desc->mode) || !permission(inode, flag & O_ACCMODE))
+        goto rollback;
+
+    inode->atime = time();
+    
+    if (flag & O_TRUNC)
+        inode_truncate(inode);
+
+    brelse(buf);
+    iput(dir);
+    return inode;
+
+rollback:
+    brelse(buf);
+    iput(dir);
+    iput(inode);
+    return NULL;
+}
+
 #include <onix/task.h>
 
 void dir_test()

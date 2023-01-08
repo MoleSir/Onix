@@ -257,6 +257,7 @@ inode_t *named(char *pathname, char **next)
     buffer_t* buf = NULL;
     while (true)
     {
+        brelse(buf);
         // inode 是路径的最高目录，left 是去掉最高目录的路径，调用 find_entry
         // 获得 left 的 inode 与 buf，如果 left 还不是最后一级，把之后的路径放入 next 返回
         buf = find_entry(&inode, left, next, &entry);
@@ -325,12 +326,16 @@ inode_t *namei(char *pathname)
 
 void dir_test()
 {
-    char pathname[] = "/";
-    char* name = NULL;
-    inode_t* inode = named(pathname, &name);
-    iput(inode);
+    inode_t* inode = namei("/d1/d2/d3/../../../hello.txt");
 
-    inode = namei("/home/hello.txt");
-    LOGK("get inode %d\n", inode->nr);
-    iput(inode);
+    char* buf = (char*)alloc_kpage(1);
+    int i = inode_read(inode, buf, 1024, 0);
+
+    LOGK("content: %s\n", buf);
+
+    memset(buf, 'A', PAGE_SIZE);
+    inode_write(inode, buf, PAGE_SIZE, 0);
+
+    memset(buf, 'B', PAGE_SIZE);
+    inode_write(inode, buf, PAGE_SIZE, PAGE_SIZE);
 }

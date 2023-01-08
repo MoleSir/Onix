@@ -5,12 +5,72 @@
 #include <onix/assert.h>
 #include <onix/debug.h>
 #include <string.h>
+#include <onix/task.h>
+#include <onix/memory.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
+#define P_EXEC IXOTH
+#define P_READ IROTH
+#define P_WRITE IWOTH
+
+bool permission(inode_t *inode, u16 mask)
+{
+    // 文件权限
+    u16 mode = inode->desc->mode;
+
+    // inode 对应的硬连接是 0
+    if (!inode->desc->nlinks)
+        return false;
+
+    task_t *task = running_task();
+
+    // 用户态权限最高
+    if (task->uid == KERNEL_USER)
+        return true;
+
+    // 自己的文件，判断前三位
+    if (task->uid == inode->desc->uid)
+        mode >>= 6;
+    // 同组的文件，研判后三位
+    else if (task->gid == inode->desc->gid)
+        mode >>= 3;
+
+    // 判断最后
+    if ((mode & mask & 0b111) == mask)
+        return true;
+    return false;
+}
+
+// 获得第一个文件分隔符
+char* strsep(const char* str)
+{
+    char* ptr =  (char*)str;
+    while (true)
+    {
+        if (IS_SEPARATOR(*ptr))
+            return ptr;
+        if (*(ptr++) == EOS)
+            return NULL;
+    }
+}
+
+// 获取最后一个分隔符
+char* strrsep(const char* str)
+{
+    char* last = NULL;
+    char* ptr = (char*)str;
+    while (true)
+    {
+        if (IS_SEPARATOR(*ptr))
+            last = ptr;
+        if (*(ptr++) == EOS)
+            return last;
+    }
+}
+
 // 判断文件名是否相等
-// name 可能是一个文件名称，也可能是连续的目录，比如 "world.txt" 或者 "d1/d2/d3/d4"
-// entry_name 是从 dentry 结构体取出的名称，只可能是单个名称：比如 "hello.txt" 或 "d3" 
+// entry_name 是否为 name 的前缀
 static bool match_name(const char *name, const char *entry_name, char **next)
 {
     char* lhs = (char*)name;
@@ -151,58 +211,126 @@ buffer_t *add_entry(inode_t *dir, const char *name, dentry_t **result)
     }
 }
 
+// 获取 pathname 中最低级路径的上一级目录
+// 比如 "/home/d1/d2/hello.c"，返回 "/home/di/d2" 这个目录的 inode
+inode_t *named(char *pathname, char **next)
+{
+    inode_t* inode = NULL;
+    task_t* task = running_task();
+    char* left = pathname;
+
+    // 第一个字符是分隔符，说明从根目录开始
+    if (IS_SEPARATOR(left[0]))
+    {
+        // 说明，inode 就是进程的根目录
+        inode = task->iroot;
+        // 跳过分隔符
+        left++;
+    }
+
+    // left 为空，表示当前目录
+    else if (left[0])
+        inode = task->ipwd;
+    else
+        return NULL;
+
+    // 如果是根目录就已经把 '/' 去掉了
+    inode->count++;
+
+    // *next 表示 pathname 去掉根目录后的字符串
+    *next = left;
+
+    // 没有子目录，直接返回根目录，或当前目录
+    if (!*left)
+        return inode;
+
+    // 存在子目录，找到路径中最右侧的分隔符
+    char* right = strrsep(left);
+    if (!right || right < left)
+        return inode;
+    
+    // 跳过分隔符，得到最后一级名称
+    right++;
+
+    *next = left;
+    dentry_t* entry = NULL;
+    buffer_t* buf = NULL;
+    while (true)
+    {
+        // inode 是路径的最高目录，left 是去掉最高目录的路径，调用 find_entry
+        // 获得 left 的 inode 与 buf，如果 left 还不是最后一级，把之后的路径放入 next 返回
+        buf = find_entry(&inode, left, next, &entry);
+
+        // 没找到，失败
+        if (!buf)
+            goto failure;
+        
+        // 找到了，获取 left 对应的 inode
+        dev_t dev = inode->dev;
+        iput(inode);
+        inode = iget(dev, entry->nr);
+
+        // 如果不是目录或权限不允许，失败
+        if (!ISDIR(inode->desc->mode) || !permission(inode, P_EXEC))
+            goto failure;
+        
+        // 如果此时，最后一级名称等于 left 的后级，说明找到了，成功
+        if (right == *next)
+            goto success;
+
+        // 不成功、也不失败，继续找下一级
+        left = *next;
+    }
+
+success:
+    brelse(buf);
+    return inode;
+
+failure:
+    brelse(buf);
+    iput(inode);
+    return NULL;
+}
+
+// 获取 pathname 对应的 inode
+inode_t *namei(char *pathname)
+{
+    char* next = NULL;
+    // 先获得 pathname 次高级目录，比如 "/home/hello.c"，这里先得到 "/home" 的 inode
+    inode_t* dir = named(pathname, &next);
+    if (!dir)
+        return NULL;
+    if (!(*next))
+        return dir;
+
+    // 再到此高级目录中找
+    char* name = next;
+    dentry_t* entry = NULL;
+    // 调用 find_entry 寻找
+    buffer_t* buf = find_entry(&dir, name, &next, &entry);
+    if (!buf)
+    {
+        iput(dir);
+        return NULL;
+    }
+
+    inode_t* inode = iget(dir->dev, entry->nr);
+
+    iput(dir);
+    brelse(buf);
+    return inode;
+}
+
 #include <onix/task.h>
 
 void dir_test()
 {
-    task_t* task = running_task();
-    inode_t* inode = task->iroot;
-    inode->count++;
-
-    char* next = NULL;
-    dentry_t* entry = NULL;
-    dentry_t* buf = NULL;
-
-    buf = find_entry(&inode, "hello.txt", &next, &entry);
-    idx_t nr = entry->nr;
-    brelse(buf);
-
-    buf = add_entry(inode, "world.txt", &entry);
-    entry->nr = nr;
-
-    inode_t* hello = iget(inode->dev, nr);
-    hello->desc->nlinks++;
-    hello->buf->dirty = true;
-
+    char pathname[] = "/";
+    char* name = NULL;
+    inode_t* inode = named(pathname, &name);
     iput(inode);
-    iput(hello);
-    brelse(buf);
 
-    // char pathname[] = "d1/d2/d3/d4";
-    // dev_t dev = inode->dev;
-    // char* name = pathname;
-    // buf = find_entry(&inode, name, &next, &entry);
-    // brelse(buf);
-
-    // iput(inode);
-    // inode = iget(dev, entry->nr);
-
-    // name = next;
-    // buf = find_entry(&inode, name, &next, &entry);
-    // brelse(buf);
-
-    // iput(inode);
-    // inode = iget(dev, entry->nr);
-
-    // name = next;
-    // buf = find_entry(&inode, name, &next, &entry);
-    // brelse(buf);
-
-    // iput(inode);
-    // inode = iget(dev, entry->nr);
-
-    // name = next;
-    // buf = find_entry(&inode, name, &next, &entry);
-    // brelse(buf);
-    // iput(inode);
+    inode = namei("/home/hello.txt");
+    LOGK("get inode %d\n", inode->nr);
+    iput(inode);
 }

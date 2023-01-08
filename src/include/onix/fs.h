@@ -141,5 +141,7 @@ int inode_read(inode_t *inode, char *buf, u32 len, off_t offset);
 // 从 inode 的 offset 处，将 buf 的 len 个字节写入磁盘
 int inode_write(inode_t *inode, char *buf, u32 len, off_t offset);
 
+// 让 inode 文件在内容清零
+void inode_truncate(inode_t *inode);
 
 #endif

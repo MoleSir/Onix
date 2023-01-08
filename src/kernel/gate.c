@@ -72,6 +72,10 @@ extern int sys_rmdir(char*);
 extern int sys_link(char*, char*);
 extern int sys_unlink(char*);
 
+extern fd_t sys_open(char* filename, int flags, int mode);
+extern fd_t sys_create(char* filename, int mode);
+extern void sys_close(fd_t fd);
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
@@ -95,4 +99,7 @@ void syscall_init()
     syscall_table[SYS_NR_RMDIR] = sys_rmdir;
     syscall_table[SYS_NR_LINK] = sys_link;
     syscall_table[SYS_NR_UNLINK] = sys_unlink;
+    syscall_table[SYS_NR_OPEN] = sys_open;
+    syscall_table[SYS_NR_CLOSE] = sys_close;
+    syscall_table[SYS_NR_CREATE] = sys_create;
 }

@@ -9,7 +9,10 @@ typedef enum syscall_t
     SYS_NR_EXIT = 1,
     SYS_NR_FORK = 2,
     SYS_NR_WRITE = 4,
+    SYS_NR_OPEN = 5,
+    SYS_NR_CLOSE = 6,
     SYS_NR_WAITPID = 7,
+    SYS_NR_CREATE = 9,
     SYS_NR_LINK = 9,
     SYS_NR_UNLINK = 10,
     SYS_NR_TIME = 13,
@@ -50,5 +53,9 @@ int rmdir(char* pathname);
 
 int link(char* oldname, char* newname);
 int unlink(char* filename);
+
+fd_t open(char* filename, int flags, int mode);
+fd_t create(char* filename, int mode);
+void close(fd_t fd);
 
 #endif

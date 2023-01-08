@@ -28,7 +28,9 @@ extern u32 keyboard_read(char* buf, u32 count);
 
 static void user_init_thread()
 {
-    u32 counter = 0;
+    fd_t fd = open("/world.txt", O_CREAT | O_RDWR, 0755);
+    close(fd);
+
     while (true)
     {
         //printf("user init thread %d, %d, %d\n", getpid(), getppid(), counter++);

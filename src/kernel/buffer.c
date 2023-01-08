@@ -139,7 +139,7 @@ buffer_t* getblk(dev_t dev, idx_t block)
     buffer_t* bf = get_from_hash_table(dev, block);
     if (bf)
     {
-        assert(bf->vaild);
+        bf->count++;
         return bf;
     }
 
@@ -164,14 +164,20 @@ buffer_t* bread(dev_t dev, idx_t block)
     assert(bf != NULL);
     if (bf->vaild)
     {
-        bf->count++;
         return bf;
     }
 
-    device_request(bf->dev, bf->data, BLOCK_SECS, bf->block * BLOCK_SECS, 0, REQ_READ);
+    lock_acquire(&(bf->lock));
 
-    bf->dirty = false;
-    bf->vaild = true;
+    if (!(bf->vaild))
+    {
+        device_request(bf->dev, bf->data, BLOCK_SECS, bf->block * BLOCK_SECS, 0, REQ_READ);
+
+        bf->dirty = false;
+        bf->vaild = true;
+    }
+
+    lock_release(&(bf->lock));
     return bf;
 }
 

@@ -123,3 +123,18 @@ int unlink(char* filename)
 {
     return _syscall1(SYS_NR_UNLINK, (u32)filename);
 }
+
+fd_t open(char* filename, int flags, int mode)
+{
+    return _syscall3(SYS_NR_OPEN, (u32)filename, (u32)flags, (u32)mode);
+}
+
+fd_t create(char* filename, int mode)
+{
+    return _syscall2(SYS_NR_CREATE, (u32)filename, (u32)mode);
+}
+
+void close(fd_t fd)
+{
+    _syscall1(SYS_NR_CLOSE, (u32)fd);
+}

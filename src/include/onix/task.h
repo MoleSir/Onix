@@ -104,4 +104,7 @@ void task_unblock(task_t* task);
 void task_sleep(u32 ms);
 void task_wakeup();
 
+fd_t task_get_fd(task_t* task);
+void task_put_fd(task_t* task, fd_t fd);
+
 #endif

@@ -106,10 +106,20 @@ mode_t umask(mode_t mask)
 
 int mkdir(char* pathname, int mode)
 {
-    _syscall2(SYS_NR_MKDIR, (u32)pathname, (u32)mode);
+    return _syscall2(SYS_NR_MKDIR, (u32)pathname, (u32)mode);
 }
 
 int rmdir(char* pathname)
 {
-    _syscall1(SYS_NR_RMDIR, (u32)pathname);
+    return _syscall1(SYS_NR_RMDIR, (u32)pathname);
+}
+
+int link(char* oldname, char* newname)
+{
+    return _syscall2(SYS_NR_LINK, (u32)oldname, (u32)newname);
+}
+
+int unlink(char* filename)
+{
+    return _syscall1(SYS_NR_UNLINK, (u32)filename);
 }

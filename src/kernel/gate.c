@@ -69,6 +69,9 @@ extern mode_t sys_umask(mode_t mask);
 extern int sys_mkdir(char*, int);
 extern int sys_rmdir(char*);
 
+extern int sys_link(char*, char*);
+extern int sys_unlink(char*);
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
@@ -90,4 +93,6 @@ void syscall_init()
     syscall_table[SYS_NR_UMASK] = sys_umask;
     syscall_table[SYS_NR_MKDIR] = sys_mkdir;
     syscall_table[SYS_NR_RMDIR] = sys_rmdir;
+    syscall_table[SYS_NR_LINK] = sys_link;
+    syscall_table[SYS_NR_UNLINK] = sys_unlink;
 }

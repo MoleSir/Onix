@@ -66,6 +66,9 @@ extern char* sys_getcwd(char *buf, size_t size);
 
 extern void console_clear();
 
+extern int sys_stat(char *filename, stat_t *statbuf);
+extern int sys_fstat(fd_t fd, stat_t *statbuf);
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
@@ -99,4 +102,6 @@ void syscall_init()
     syscall_table[SYS_NR_CHDIR] = sys_chdir;
     syscall_table[SYS_NR_READDIR] = sys_readdir;
     syscall_table[SYS_NR_CLEAR] = console_clear;
+    syscall_table[SYS_NR_STAT] = sys_stat;
+    syscall_table[SYS_NR_FSTAT] = sys_fstat;
 }

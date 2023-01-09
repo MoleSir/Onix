@@ -27,6 +27,19 @@ static char *onix_logo[] = {
 extern char *strsep(const char *str);
 extern char *strrsep(const char *str);
 
+static void strftime(time_t stamp, char *buf)
+{
+    tm time;
+    localtime(stamp, &time);
+    sprintf(buf, "%d-%02d-%02d %02d:%02d:%02d",
+            time.tm_year + 1900,
+            time.tm_mon,
+            time.tm_mday,
+            time.tm_hour,
+            time.tm_min,
+            time.tm_sec);
+}
+
 void builtin_logo()
 {
     clear();
@@ -52,11 +65,72 @@ void builtin_clear()
     clear();
 }
 
-void builtin_ls()
+static void parsemode(int mode, char *buf)
+{
+    memset(buf, '-', 10);
+    buf[10] = '\0';
+    char *ptr = buf;
+
+    switch (mode & IFMT)
+    {
+    case IFREG:
+        *ptr = '-';
+        break;
+    case IFBLK:
+        *ptr = 'b';
+        break;
+    case IFDIR:
+        *ptr = 'd';
+        break;
+    case IFCHR:
+        *ptr = 'c';
+        break;
+    case IFIFO:
+        *ptr = 'p';
+        break;
+    case IFLNK:
+        *ptr = 'l';
+        break;
+    case IFSOCK:
+        *ptr = 's';
+        break;
+    default:
+        *ptr = '?';
+        break;
+    }
+    ptr++;
+
+    for (int i = 6; i >= 0; i -= 3)
+    {
+        int fmt = (mode >> i) & 07;
+        if (fmt & 0b100)
+        {
+            *ptr = 'r';
+        }
+        ptr++;
+        if (fmt & 0b010)
+        {
+            *ptr = 'w';
+        }
+        ptr++;
+        if (fmt & 0b001)
+        {
+            *ptr = 'x';
+        }
+        ptr++;
+    }
+}
+
+void builtin_ls(int argc, char* argv[])
 {
     fd_t fd = open(cwd, O_RDONLY, 0);
     if (fd == EOF)
         return;
+    bool list = false;
+
+    // list -l
+    if (argc == 2 && !strcmp(argv[1], "-l"))
+        list = true;
     
     lseek(fd, 0, SEEK_SET);
     dentry_t entry;
@@ -69,9 +143,29 @@ void builtin_ls()
             continue;
         if (!strcmp(entry.name, ".") || !strcmp(entry.name, ".."))
             continue;
-        printf("%s ", entry.name);
+        if (!list)
+        {
+            printf("%s ", entry.name);
+            continue;
+        }
+
+        stat_t statbuf;
+        stat(entry.name, &statbuf);
+
+        parsemode(statbuf.mode, buf);
+        printf("%s ", buf);
+
+        strftime(statbuf.mtime, buf);
+        printf("% 2d % 2d % 2d % 2d %s %s\n", 
+            statbuf.nlinks,
+            statbuf.uid,
+            statbuf.gid,
+            statbuf.size,
+            buf,
+            entry.name);
     }
-    printf("\n");
+    if (!list)
+        printf("\n");
     close(fd);
 }
 
@@ -124,6 +218,12 @@ void builtin_rm(int argc, char *argv[])
         return;
     }
     unlink(argv[1]);
+}
+
+void builtin_date(int argc, char* argv[])
+{
+    strftime(time(), buf);
+    printf("%s\n", buf);
 }
 
 // 得到 name 的最后一级目录
@@ -283,7 +383,7 @@ static void execute(int argc, char *argv[])
     }
     if (!strcmp(line, "ls"))
     {
-        return builtin_ls();
+        return builtin_ls(argc, argv);
     }
     if (!strcmp(line, "cd"))
     {

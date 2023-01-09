@@ -151,7 +151,7 @@ int lseek(fd_t fd, off_t offset, int whence)
 
 char* getcwd(char *buf, size_t size)
 {
-    return _syscall2(SYS_NR_GETCWD, (u32)buf, (u32)size);
+    return (char*) _syscall2(SYS_NR_GETCWD, (u32)buf, (u32)size);
 }
 
 int chdir(char *pathname)
@@ -162,4 +162,14 @@ int chdir(char *pathname)
 int chroot(char *pathname)
 {
     return _syscall1(SYS_NR_CHROOT, (u32)pathname);
+}
+
+int readdir(fd_t fd, void* dir, u32 count)
+{
+    return _syscall3(SYS_NR_READDIR, fd, (u32)dir, (u32)count);
+}
+
+void clear()
+{
+    return _syscall0(SYS_NR_CLEAR);
 }

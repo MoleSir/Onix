@@ -671,9 +671,9 @@ inode_t *inode_open(char *pathname, int flag, int mode)
     if (!dir)
         goto rollback;
 
-    // 文件名为空
+    // 文件名为空，说明打开的是一个目录
     if (!(*next))
-        goto rollback;
+        return dir;
 
     // 又读又写
     if ((flag & O_TRUNC) && ((flag & O_ACCMODE) == O_RDONLY))
@@ -721,8 +721,12 @@ inode_t *inode_open(char *pathname, int flag, int mode)
     inode->buf->dirty = true;
     
 makeup:
-    // 目录文件或权限不足
-    if (ISDIR(inode->desc->mode) || !permission(inode, flag & O_ACCMODE))
+    // 权限不足
+    if (!permission(inode, flag & O_ACCMODE))
+        goto rollback;
+    
+    // 目录只能只读打开
+    if (ISDIR(inode->desc->mode) && ((flag & O_ACCMODE) != O_RDONLY))
         goto rollback;
 
     inode->atime = time();

@@ -75,6 +75,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/ds/bitmap.o \
 	$(BUILD)/ds/list.o \
 	$(BUILD)/ds/fifo.o \
+	$(BUILD)/builtin/osh.o \
 
 	$(shell mkdir -p $(dir $@))
 	ld ${LDFLAGS} $^ -o $@

@@ -26,25 +26,23 @@ void idle_thread()
     }
 }
 
-extern u32 keyboard_read(char* buf, u32 count);
+extern void osh_main();
 
 static void user_init_thread()
 {
-    char buf[256];
-
-    // 切换跟目录
-    chroot("/d1");
-    // 切换当前目录 pwd
-    chdir("/d2");
-    // 获得当前目录
-    getcwd(buf, sizeof(buf));
-    printf("current work directory: %s\n", buf);
-
     while (true)
     {
-        char ch;
-        read(stdin, &ch, 1);
-        write(stdout, &ch, 1);
+        u32 status;
+        pid_t pid = fork();
+        if (pid)
+        {
+            pid_t child = waitpid(pid, &status);
+            printf("wait pid %d status %d %d\n", child, status, time());
+        }
+        else
+        {
+            osh_main();
+        }
     }
 }
 

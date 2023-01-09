@@ -110,6 +110,8 @@ typedef struct dentry_t
     char name[NAME_LEN];    // 文件名称
 } dentry_t;
 
+typedef dentry_t dirent_t;
+
 typedef struct file_t
 {
     inode_t* inode;     // 文件 inode

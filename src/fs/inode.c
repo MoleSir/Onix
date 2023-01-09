@@ -69,6 +69,8 @@ inode_t* get_root_inode()
     return inode_table;
 }
 
+extern time_t time();
+
 // 获得设备号为 dev 磁盘的 nr 号 indoe
 inode_t* iget(dev_t dev, idx_t nr)
 {
@@ -211,7 +213,7 @@ int inode_read(inode_t *inode, char *buf, u32 len, off_t offset)
     assert(ISFILE(inode->desc->mode) || ISDIR(inode->desc->mode));
 
     // 判断文件偏移量
-    if (offset > inode->desc->size)
+    if (offset >= inode->desc->size)
         return EOF;
 
     // 开始读取的位置

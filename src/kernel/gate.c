@@ -34,6 +34,7 @@ extern void dir_test();
 
 static u32 sys_test()
 {
+    LOGK("sys_test called!!!\n");
     return 255;
 }
 
@@ -53,6 +54,7 @@ extern int sys_rmdir(char*);
 
 extern int sys_link(char*, char*);
 extern int sys_unlink(char*);
+extern int sys_readdir(fd_t fd, dirent_t* dir, u32 count);
 
 extern fd_t sys_open(char* filename, int flags, int mode);
 extern fd_t sys_create(char* filename, int mode);
@@ -61,6 +63,8 @@ extern void sys_close(fd_t fd);
 extern int sys_chdir(char *pathname);
 extern int sys_chroot(char *pathname);
 extern char* sys_getcwd(char *buf, size_t size);
+
+extern void console_clear();
 
 void syscall_init()
 {
@@ -93,4 +97,6 @@ void syscall_init()
     syscall_table[SYS_NR_GETCWD] = sys_getcwd;
     syscall_table[SYS_NR_CHROOT] = sys_chroot;
     syscall_table[SYS_NR_CHDIR] = sys_chdir;
+    syscall_table[SYS_NR_READDIR] = sys_readdir;
+    syscall_table[SYS_NR_CLEAR] = console_clear;
 }

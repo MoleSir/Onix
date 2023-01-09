@@ -169,6 +169,12 @@ int sys_lseek(fd_t fd, off_t offset, int whence)
     return file->offset;
 }
 
+// 读取目录
+int sys_readdir(fd_t fd, dirent_t* dir, u32 count)
+{
+    return sys_read(fd, (char*)dir, sizeof(dirent_t));
+}
+
 void file_init()
 {
     for (size_t i = 0; i < FILE_NR; ++i)

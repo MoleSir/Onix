@@ -223,7 +223,7 @@ inode_t *named(char *pathname, char **next)
     // 第一个字符是分隔符，说明从根目录开始
     if (IS_SEPARATOR(left[0]))
     {
-        // 说明，inode 就是进程的根目录
+        // 说明，inode 就是进程的根目录（是进程根目录，不是总的根目录）
         inode = task->iroot;
         // 跳过分隔符
         left++;
@@ -295,6 +295,7 @@ failure:
 }
 
 // 获取 pathname 对应的 inode
+// pathname 是相对当前进程的根目录，'/' 表示当前进程的根目录！！不是系统的根目录
 inode_t *namei(char *pathname)
 {
     char* next = NULL;
@@ -740,13 +741,132 @@ rollback:
     return NULL;
 }
 
-#include <onix/task.h>
-
-void dir_test()
+// 计算 当前路径 pwd 和新路径 pathname，存入 pwd
+void abspath(char* pwd, const char* pathname)
 {
-    inode_t* inode = namei("/d1/d2/d3/../../../hello.txt");
+    char *cur = NULL;
+    char *ptr = NULL;
+    if (IS_SEPARATOR(pathname[0]))
+    {
+        cur = pwd + 1;
+        *cur = 0;
+        pathname++;
+    }
+    else
+    {
+        cur = strrsep(pwd) + 1;
+        *cur = 0;
+    }
 
-    inode_truncate(inode);
+    while (pathname[0])
+    {
+        ptr = strsep(pathname);
+        if (!ptr)
+        {
+            break;
+        }
+
+        int len = (ptr - pathname) + 1;
+        *ptr = '/';
+        if (!memcmp(pathname, "./", 2))
+        {
+            /* code */
+        }
+        else if (!memcmp(pathname, "../", 3))
+        {
+            if (cur - 1 != pwd)
+            {
+                *(cur - 1) = 0;
+                cur = strrsep(pwd) + 1;
+                *cur = 0;
+            }
+        }
+        else
+        {
+            strncpy(cur, pathname, len + 1);
+            cur += len;
+        }
+        pathname += len;
+    }
+
+    if (!pathname[0])
+        return;
+
+    if (!strcmp(pathname, "."))
+        return;
+
+    if (strcmp(pathname, ".."))
+    {
+        strcpy(cur, pathname);
+        cur += strlen(pathname);
+        *cur = '/';
+        *(cur + 1) = '\0';
+        return;
+    }
+    if (cur - 1 != pwd)
+    {
+        *(cur - 1) = 0;
+        cur = strrsep(pwd) + 1;
+        *cur = 0;
+    }
+}
+
+// 切换进程目录
+int sys_chdir(char *pathname)
+{
+    // 找到 pathname 的 inode（相对次进程的根目录）
+    task_t* task = running_task();
+    inode_t* inode = namei(pathname);
+    // 不存在，切换失败
+    if (!inode)
+        goto rollback;
+    // 如果 pathname 不是目录，或者说当前已经在这个目录了，切换失败
+    if (!ISDIR(inode->desc->mode) || inode == task->ipwd)
+        goto rollback;
+    
+    // 设置进程的 pwd
+    abspath(task->pwd, pathname);
+
+    // 切换进程的 ipwd
+    iput(task->ipwd);
+    task->ipwd = inode;
+
+    return 0;
+
+rollback:
     iput(inode);
+    return EOF;
+}
+
+// 切换进程根目录
+int sys_chroot(char *pathname)
+{
+    // 找到 pathname 的 inode
+    task_t* task = running_task();
+    inode_t* inode = namei(pathname);
+    // 不存在，切换失败
+    if (!inode)
+        goto rollback;
+    // 如果 pathname 不是目录，或者说已经是跟目录了，切换失败
+    if (!ISDIR(inode->desc->mode) || inode == task->iroot)
+        goto rollback;   
+
+    // 释放原来的根目录 inode
+    iput(task->iroot);
+    // 挂上新 iroor
+    task->iroot = inode;
+    return 0;
+    
+rollback:
+    iput(inode);
+    return EOF;
+}
+
+char* sys_getcwd(char *buf, size_t size)
+{
+    // 从 task_t 中读取
+    task_t* task = running_task();
+    strncpy(buf, task->pwd, size);
+    return buf;
 }
 

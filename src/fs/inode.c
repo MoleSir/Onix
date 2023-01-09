@@ -84,7 +84,7 @@ inode_t* iget(dev_t dev, idx_t nr)
         return inode;
     }
 
-    // 没有在已读取的 inode 找到，就创建一个
+    // 没有在已读取的 inode 找到，就从磁盘读入一个
     super_block_t* sb = get_super(dev);
     assert(sb);
     // 得到一个空闲的 inode 结构体
@@ -92,7 +92,7 @@ inode_t* iget(dev_t dev, idx_t nr)
     // 配置 inode 的属性
     inode->dev = dev;
     inode->nr = nr;
-    inode->count = 1;
+    inode->count++;
 
     // 加入本设备的 inode 链表
     list_push(&(sb->inode_list), &(inode->node));

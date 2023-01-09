@@ -32,17 +32,14 @@ static void user_init_thread()
 {
     char buf[256];
 
-    fd_t fd;
-    int len = 0;
-    fd = open("/hello.txt", O_RDWR, 0755);
-    lseek(fd, 5, SEEK_END);
+    // 切换跟目录
+    chroot("/d1");
+    // 切换当前目录 pwd
+    chdir("/d2");
+    // 获得当前目录
+    getcwd(buf, sizeof(buf));
+    printf("current work directory: %s\n", buf);
 
-    read(fd, buf, 10);
-
-    printf("%s\n", buf);
-
-    close(fd);
-    
     while (true)
     {
         char ch;

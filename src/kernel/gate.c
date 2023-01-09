@@ -58,6 +58,10 @@ extern fd_t sys_open(char* filename, int flags, int mode);
 extern fd_t sys_create(char* filename, int mode);
 extern void sys_close(fd_t fd);
 
+extern int sys_chdir(char *pathname);
+extern int sys_chroot(char *pathname);
+extern char* sys_getcwd(char *buf, size_t size);
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
@@ -86,4 +90,7 @@ void syscall_init()
     syscall_table[SYS_NR_CLOSE] = sys_close;
     syscall_table[SYS_NR_CREATE] = sys_create;
     syscall_table[SYS_NR_LSEEK] = sys_lseek;
+    syscall_table[SYS_NR_GETCWD] = sys_getcwd;
+    syscall_table[SYS_NR_CHROOT] = sys_chroot;
+    syscall_table[SYS_NR_CHDIR] = sys_chdir;
 }

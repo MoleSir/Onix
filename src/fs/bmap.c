@@ -6,7 +6,7 @@
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
-// 分配一个文件块，只是根据位图得到空闲块的索引，并没有真正读取磁盘，返回的是磁盘逻辑块号（相对文件快的起始块号）
+// 分配一个文件块，只是根据位图得到空闲块的索引，并没有真正读取磁盘，返回的是磁盘逻辑块号
 idx_t balloc(dev_t dev)
 {
     super_block_t* sb = get_super(dev);
@@ -22,6 +22,7 @@ idx_t balloc(dev_t dev)
         assert(buf);
 
         // 将整个缓冲区作为位图
+        // 次位图的 0 号 bit 位映射磁盘逻辑块号 i * BLOCK_BITS + sb->desc->firstdatazone - 1
         bitmap_make(&map, buf->data, BLOCK_SIZE, i * BLOCK_BITS + sb->desc->firstdatazone - 1);
         
         // 从位图扫描一位，即得到一个空闲的块
@@ -38,7 +39,7 @@ idx_t balloc(dev_t dev)
     return bit;
 }
 
-// 释放一个文件块，释放的是磁盘逻辑块号（相对文件快的起始块号）
+// 释放一个文件块，释放的是磁盘逻辑块号（相对整个磁盘）
 void bfree(dev_t dev, idx_t idx)
 {
     super_block_t* sb = get_super(dev);
@@ -70,7 +71,7 @@ void bfree(dev_t dev, idx_t idx)
 }
 
 // 分配一个文件系统 inode，只是根据位图得到空闲 inode 块的索引，并没有真正读取磁盘
-// 返回的是 inode 数组的序号
+// idx 是 inode 数组的序号
 idx_t ialloc(dev_t dev)
 {
     super_block_t* sb = get_super(dev);
@@ -85,6 +86,7 @@ idx_t ialloc(dev_t dev)
         buf = sb->imaps[i];
         assert(buf);
 
+        // 位图的第 0 号 bit 位对应第 BLOCK_BITS * i 号 inode
         bitmap_make(&map, buf->data, BLOCK_BITS, i * BLOCK_BITS);
         bit = bitmap_scan(&map, 1);
         if (bit != EOF)

@@ -37,9 +37,10 @@ static void put_free_inode_struct(inode_t* inode)
     inode->dev = EOF;
 }
 
-// 计算 nr 号的 inode 在哪个块
+// 计算 nr 号的 inode 在哪个块（磁盘逻辑块号）
 static inline idx_t cal_inode_block(super_block_t* sb, idx_t nr)
 {
+    // | 主引导 | 超级块 | inode 位图 | 文件块位图 | 保存 inode 的块 | 保存文件的块 |
     // inode 的 nr 从 1 开始编址
     // 磁盘结构：主引导 + 超级块 + inode 位图 + 文件块位图 + (nr-1) / 一块的 inode 数量
     return 2 + sb->desc->imap_block + sb->desc->zmap_block + (nr - 1) / BLOCK_INODES;
@@ -72,6 +73,7 @@ inode_t* get_root_inode()
 extern time_t time();
 
 // 获得设备号为 dev 磁盘的 nr 号 indoe
+// 调用者保证 dev 磁盘的 nr 号 inode 是有效的（位图为 1）
 inode_t* iget(dev_t dev, idx_t nr)
 {
     // 尝试在已经存在的 inode 寻找，这里的存在是指读入内存的存在
@@ -107,8 +109,8 @@ inode_t* iget(dev_t dev, idx_t nr)
     inode->buf = buf;
 
     // 一个块保存多个 inode，找此 inode 的位置
-    // 将缓冲视为一个 inode 描述符数组，获得对应指针，求 nr 在一个块中的索引
-    inode->desc = (inode_desc_t*)buf->data + ((inode->nr - 1) % BLOCK_INODES); 
+    // 将缓冲视为一个 inode 描述符数组，获得对应指针，求 nr 在一个块中的索引，（nr - 1）!!!
+    inode->desc = (inode_desc_t*)(buf->data) + ((inode->nr - 1) % BLOCK_INODES); 
     // 更新时间
     inode->ctime = inode->desc->mtime;
     inode->atime = time();
@@ -141,6 +143,8 @@ void iput(inode_t* inode)
 }
 
 // 获取 inode 第 block 块索引，如果不存在，并且 create 为 true 则创建
+// inode 指向一个文件，返回该文件内容的第 block 号文件块索引（是针对这个文件的内容的索引）
+// 返回的是磁盘逻辑块
 idx_t bmap(inode_t* inode, idx_t block, bool create)
 {
     assert(block >= 0 && block < TOTAL_BLOCK);

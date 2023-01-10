@@ -51,7 +51,7 @@ super_block_t* read_super(dev_t dev)
     // 获得一个空的块
     sb = get_free_super();
 
-    // 设备的第一块作为超级块（0 是 boot）
+    // 设备的第一块保存超级块信息（0 是 boot）
     buffer_t* buf = bread(dev, 1);
 
     // 设置超级块信息
@@ -65,11 +65,12 @@ super_block_t* read_super(dev_t dev)
     memset(sb->zmaps, 0, sizeof(sb->zmaps));
 
     // 超级块中的信息指明了位图的位置，但具体的内容还是需要再读取
-    // 读取 inode ，位快图索引从 2 开始，0 是引导、1 是超级块
+    // 读取 inode 位图，逻辑块索引从 2 开始，0 是引导、1 是超级块
     int idx = 2;
     // 读取 imap_block 个块
     for (int i = 0; i < sb->desc->imap_block; ++i)
     {
+        // 每一块需要一个 buffer_t
         assert(i < IMAP_NR);
         if ((sb->imaps[i] = bread(dev, idx)))
             idx++;

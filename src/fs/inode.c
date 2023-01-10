@@ -73,6 +73,19 @@ inode_t* get_root_inode()
 
 extern time_t time();
 
+static inode_t* fit_inode(inode_t* inode)
+{
+    if (!(inode->mount))
+        return inode;
+    
+    super_block_t* sb = get_super(inode->mount);
+    assert(sb);
+    iput(inode);
+    inode = sb->iroot;
+    inode->count++;
+    return inode;
+}
+
 // 获得设备号为 dev 磁盘的 nr 号 indoe
 // 调用者保证 dev 磁盘的 nr 号 inode 是有效的（位图为 1）
 inode_t* iget(dev_t dev, idx_t nr)
@@ -86,7 +99,7 @@ inode_t* iget(dev_t dev, idx_t nr)
         inode->count++;
         inode->atime = time();
 
-        return inode;
+        return fit_inode(inode);
     }
 
     // 没有在已读取的 inode 找到，就从磁盘读入一个

@@ -3,6 +3,7 @@
 #include <onix/debug.h>
 #include <onix/device.h>
 #include <onix/buffer.h>
+#include <onix/stat.h>
 #include <string.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
@@ -38,13 +39,39 @@ super_block_t* get_super(dev_t dev)
     return NULL;
 }
 
+// 
+void put_super(super_block_t* sb)
+{
+    if (!sb)
+        return;
+    assert(sb->count > 0);
+    sb->count --;
+    if (sb->count)
+        return;
+
+    sb->dev = EOF;
+    iput(sb->imount);
+    iput(sb->iroot);
+
+    for (int i = 0; i < sb->desc->imap_block; ++i)
+        brelse(sb->imaps[i]);
+
+    for (int i = 0; i < sb->desc->zmap_block; ++i)
+        brelse(sb->zmaps[i]);
+
+    brelse(sb->buf);
+}
+
 // 读设备 dev 的超级块
 super_block_t* read_super(dev_t dev)
 {
     // 检查 dev 的超级块是否已经被添加过
     super_block_t* sb = get_super(dev);
     if (sb)
+    {
+        sb->count++;
         return sb;
+    }
 
     LOGK("Reading super block of device %d\n", dev);
 
@@ -58,6 +85,7 @@ super_block_t* read_super(dev_t dev)
     sb->buf = buf;
     sb->desc = (super_desc_t*)(buf->data);
     sb->dev = dev;
+    sb->count = 1;
 
     assert(sb->desc->magic == MINIX1_MAGIC);
 
@@ -123,4 +151,103 @@ void super_init()
     }
 
     mount_root();
+}
+
+// 将 devname 文件对应的设备挂载到 dirname 目录下
+int sys_mount(char *devname, char *dirname, int flags)
+{
+    LOGK("mount %s to %s\n", devname, dirname);
+
+    inode_t* devinode = NULL;
+    inode_t* dirinode = NULL;
+    super_block_t* sb = NULL;
+    
+    // 打开 devname 设备名对应的文件 inode
+    devinode = namei(devname);
+    if (!devinode)
+        goto rollback;
+    if (!ISBLK(devinode->desc->mode))
+        goto rollback;
+
+    // devname 的设备号，约定保存在文件的 zone[0] 处
+    dev_t dev = devinode->desc->zone[0];
+
+    // 获得挂载目录的 inode
+    dirinode = namei(dirname);
+    if (!dirinode)
+        goto rollback;
+    // 只能挂载目录下
+    if (!ISDIR(dirinode->desc->mode));
+    // 已经有挂载目录了
+    if (dirinode->count != 1 || dirinode->mount)
+        goto rollback;
+
+    sb = read_super(dev);
+    // 如果已经被挂载了！
+    if (sb->imount)
+        goto rollback;
+
+    // 超级快的根为第一个块
+    sb->iroot = iget(dev, 1);
+    // 超级快的挂载目录为 dirinode
+    sb->imount = dirinode;
+    // 目录的挂载设备号为 dev
+    dirinode->mount = dev;
+    iput(devinode);
+    return 0;
+
+rollback:
+    put_super(sb);
+    iput(devinode);
+    iput(dirinode);
+    return EOF;
+}
+
+int sys_umount(char *target)
+{
+    LOGK("umount %s\n", target);
+    inode_t *inode = NULL;
+    super_block_t *sb = NULL;
+    int ret = EOF;
+
+    inode = namei(target);
+    if (!inode)
+        goto rollback;
+
+    if (!ISBLK(inode->desc->mode) && inode->nr != 1)
+        goto rollback;
+
+    if (inode == root->imount)
+        goto rollback;
+
+    dev_t dev = inode->dev;
+    if (ISBLK(inode->desc->mode))
+    {
+        dev = inode->desc->zone[0];
+    }
+
+    sb = get_super(dev);
+    if (!sb->imount)
+        goto rollback;
+
+    if (!sb->imount->mount)
+    {
+        LOGK("warning super block mount = 0\n");
+    }
+
+    if (list_size(&sb->inode_list) > 1)
+        goto rollback;
+
+    iput(sb->iroot);
+    sb->iroot = NULL;
+
+    sb->imount->mount = 0;
+    iput(sb->imount);
+    sb->imount = NULL;
+    ret = 0;
+
+rollback:
+    put_super(sb);
+    iput(inode);
+    return ret;
 }

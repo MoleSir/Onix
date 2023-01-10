@@ -105,8 +105,14 @@ buffer_t *find_entry(inode_t **dir, const char *name, char **next, dentry_t **re
     // 保证 dir 是目录
     assert(ISDIR((*dir)->desc->mode));
 
-    // 获取目录所在的超级块
-    super_block_t* sb = read_super((*dir)->dev);
+    if (match_name(name, "..", next) && (*dir)->nr == 1)
+    {
+        super_block_t* sb = get_super((*dir)->dev);
+        inode_t* inode = *dir;
+        (*dir) = sb->imount;
+        (*dir)->count++;
+        iput(inode);
+    }
 
     // dir 目录最多子目录数量
     u32 entries = (*dir)->desc->size / sizeof(dentry_t);

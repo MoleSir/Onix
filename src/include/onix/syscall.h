@@ -19,6 +19,7 @@ typedef enum syscall_t
     SYS_NR_UNLINK = 10,
     SYS_NR_CHDIR = 12,
     SYS_NR_TIME = 13,
+    SYS_NR_MKNOD = 14,
     SYS_NR_STAT = 18,
     SYS_NR_LSEEK = 19,
     SYS_NR_GETPID = 20,
@@ -79,5 +80,7 @@ void clear();
 
 int stat(char *filename, stat_t *statbuf);
 int fstat(fd_t fd, stat_t *statbuf);
+
+int mknod(char* filename, int mode, int dev);
 
 #endif

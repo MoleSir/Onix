@@ -874,3 +874,55 @@ char* sys_getcwd(char *buf, size_t size)
     return buf;
 }
 
+int sys_mknod(char* filename, int mode, int dev)
+{
+    char* next = NULL;
+    char* name = NULL;
+    inode_t* dir = NULL;
+    inode_t* inode = NULL;
+    buffer_t* buf = NULL;
+    dentry_t* entry = NULL;
+    int ret = EOF;
+
+    // 找到父目录
+    dir = named(filename, &next);
+    if (!dir)
+        goto rollback;
+
+    // 如果文件名为 空
+    if (!(*next))
+        goto rollback;
+
+    // 权限不足
+    if (!permission(dir, P_WRITE))
+        goto rollback;
+
+    name = next;
+    // 检查 name 是否已经存在
+    buf = find_entry(&dir, name, &next, &entry);
+    if (buf)
+        goto rollback;
+
+    // 新建一个目录项
+    buf = add_entry(dir, name, &entry);
+    buf->dirty = true;
+
+    // 申请一个 inode（位图）
+    entry->nr = ialloc(dir->dev);
+
+    // 获得对应的 inode
+    inode = new_inode(dir->dev, entry->nr);
+    inode->desc->mode = mode;
+
+    // 如果是字符设备或块设备
+    if (ISBLK(mode) || ISCHR(mode)) 
+        inode->desc->zone[0] = dev;
+    
+    ret = 0;
+
+rollback:
+    brelse(buf);
+    iput(inode);
+    iput(dir);
+    return ret;
+}

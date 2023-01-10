@@ -23,7 +23,7 @@ typedef enum syscall_t
     SYS_NR_STAT = 18,
     SYS_NR_LSEEK = 19,
     SYS_NR_GETPID = 20,
-    SYS_NR_FSTAT = 18,
+    SYS_NR_FSTAT = 28,
     SYS_NR_MKDIR = 39,
     SYS_NR_RMDIR = 40,
     SYS_NR_BRK = 45,

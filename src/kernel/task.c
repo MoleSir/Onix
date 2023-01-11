@@ -23,6 +23,7 @@ extern u32 jiffy;
 extern bitmap_t kernel_map;
 extern tss_t tss;
 extern void task_switch(task_t* next);
+extern file_t file_table[];
 
 static task_t* task_table[NR_TASKS];
 static list_t block_list;
@@ -267,6 +268,13 @@ static task_t* task_create(target_t target, const char* name, u32 priority, u32 
     strcpy(task->pwd, "/");
     task->umask = 0022; // 对应 0755
 
+    // 获得全局文件中的标准输入输出设备
+    task->files[STDIN_FILENO] = &file_table[STDIN_FILENO];
+    task->files[STDOUT_FILENO] = &file_table[STDOUT_FILENO];
+    task->files[STDERR_FILENO] = &file_table[STDERR_FILENO];
+    task->files[STDIN_FILENO]->count++;
+    task->files[STDOUT_FILENO]->count++;
+    task->files[STDERR_FILENO]->count++;
 
     return task;
 }

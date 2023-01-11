@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <onix/device.h>
 
+extern file_t file_table[];
+
 // 设备初始化，将 device_t 再抽象为文件
 void dev_init()
 {
@@ -63,4 +65,33 @@ void dev_init()
         sprintf(name, "/dev/%s", device->name);
         mknod(name, IFBLK | 0600, device->dev);
     }
+
+
+    // 创建三个标准输入输出文件
+    link("/dev/console", "/dev/stdout");
+    link("/dev/console", "/dev/stderr");
+    link("/dev/keyboard", "/dev/stdin");
+
+    file_t *file;
+    inode_t *inode;
+    file = &file_table[STDIN_FILENO];
+    inode = namei("/dev/stdin");
+    file->inode = inode;
+    file->mode = inode->desc->mode;
+    file->flags = O_RDONLY;
+    file->offset = 0;
+
+    file = &file_table[STDOUT_FILENO];
+    inode = namei("/dev/stdout");
+    file->inode = inode;
+    file->mode = inode->desc->mode;
+    file->flags = O_WRONLY;
+    file->offset = 0;
+
+    file = &file_table[STDERR_FILENO];
+    inode = namei("/dev/stderr");
+    file->inode = inode;
+    file->mode = inode->desc->mode;
+    file->flags = O_WRONLY;
+    file->offset = 0;
 }

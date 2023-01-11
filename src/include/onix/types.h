@@ -47,9 +47,9 @@ typedef int32 off_t;
 typedef int32 fd_t;
 typedef enum std_fd_t
 {
-    stdin = 0,
-    stdout,
-    stderr,
+    STDIN_FILENO = 0,
+    STDOUT_FILENO,
+    STDERR_FILENO,
 } std_fd_t;
 
 #endif

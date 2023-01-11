@@ -2,6 +2,7 @@
 #include <onix/assert.h>
 #include <onix/task.h>
 #include <onix/device.h>
+#include <onix/stat.h>
 #include <onix/types.h>
 
 #define FILE_NR 128
@@ -82,14 +83,7 @@ void sys_close(fd_t fd)
 
 u32 sys_read(fd_t fd, char* buf, u32 count)
 {
-    // 如果是输入设备
-    if (fd == stdin)
-    {
-        // 获得键盘设备，使用虚拟设备读取
-        device_t* device = device_find(DEV_KEYBOARD, 0);
-        return device_read(device->dev, buf, count, 0, 0);
-    }
-
+    int len = 0;
     // 获得文件结构体
     task_t* task = running_task();
     file_t* file = task->files[fd];
@@ -100,24 +94,41 @@ u32 sys_read(fd_t fd, char* buf, u32 count)
     if ((file->flags & O_ACCMODE) == O_WRONLY)
         return EOF;
 
-    // 调用 inode_read 读取磁盘文件
     inode_t* inode = file->inode;
-    int len = inode_read(inode, buf, count, file->offset);
+    // 字符文件
+    if (ISCHR(inode->desc->mode))
+    {
+        assert(inode->desc->zone[0]);
+        // 读设备
+        len = device_read(inode->desc->zone[0], buf, count, 0, 0);
+        return len;
+    }
+    // 块文件
+    else if (ISBLK(inode->desc->mode))
+    {
+        assert(inode->desc->zone[0]);
+        device_t* device = device_get(inode->desc->zone[0]);
+        assert(file->offset % BLOCK_SIZE == 0);
+        assert(count % BLOCK_SIZE == 0);
+        // 读设备的扇区
+        len = device_read(inode->desc->zone[0], buf, count / BLOCK_SIZE, file->offset / BLOCK_SIZE, 0);
+        return len;
+    }
+    // 其他文件
+    else
+    {
+        // 直接读 inode
+        len = inode_read(inode, buf, count, file->offset);
+    }
+
     if (len != EOF)
         file->offset += len;
-    
+
     return len;
 }
 
 u32 sys_write(fd_t fd, char* buf, u32 count)
 {
-    // 输出显示器
-    if (fd == stdout || fd == stderr)
-    {
-        device_t* device = device_find(DEV_CONSOLE, 0);
-        return device_write(device->dev, buf, count, 0, 0);
-    }
-
     // 获得文件结构体
     task_t* task = running_task();
     file_t* file = task->files[fd];
@@ -128,11 +139,38 @@ u32 sys_write(fd_t fd, char* buf, u32 count)
     if ((file->flags & O_ACCMODE) == O_RDONLY)
         return EOF;
 
+    int len = 0;
     inode_t* inode = file->inode;
-    int len = inode_write(inode, buf, count, file->offset);
+    // 字符文件
+    if (ISCHR(inode->desc->mode))
+    {
+        assert(inode->desc->zone[0]);
+        // 读设备
+        device_t* device = device_get(inode->desc->zone[0]);
+        len = device_write(inode->desc->zone[0], buf, count, 0, 0);
+        return len;
+    }
+    // 块文件
+    else if (ISBLK(inode->desc->mode))
+    {
+        assert(inode->desc->zone[0]);
+        device_t* device = device_get(inode->desc->zone[0]);
+        assert(file->offset % BLOCK_SIZE == 0);
+        assert(count % BLOCK_SIZE == 0);
+        // 读设备的扇区
+        len = device_write(inode->desc->zone[0], buf, count / BLOCK_SIZE, file->offset / BLOCK_SIZE, 0);
+        return len;
+    }
+    // 其他文件
+    else
+    {
+        // 直接读 inode
+        len = inode_write(inode, buf, count, file->offset);
+    }
+
     if (len != EOF)
         file->offset += len;
-    
+
     return len;
 }
 
@@ -177,7 +215,7 @@ int sys_readdir(fd_t fd, dirent_t* dir, u32 count)
 
 void file_init()
 {
-    for (size_t i = 0; i < FILE_NR; ++i)
+    for (size_t i = 3; i < FILE_NR; ++i)
     {
         file_t* file = file_table + i;
         file->count = 0;

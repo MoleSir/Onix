@@ -37,6 +37,7 @@ typedef enum syscall_t
     SYS_NR_SLEEP = 162,
     SYS_NR_GETCWD = 183,
     SYS_NR_CLEAR = 200,
+    SYS_NR_MKFS = 201,
 } syscall_t;
 
 u32 test();
@@ -87,5 +88,7 @@ int mknod(char* filename, int mode, int dev);
 
 int mount(char *devname, char *dirname, int flags);
 int umount(char *target);
+
+int mkfs(char* devname, int icount);
 
 #endif

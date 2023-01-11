@@ -240,6 +240,13 @@ void builtin_umount(int argc, char* argv[])
     umount(argv[1]);
 }
 
+void builtin_mkfs(int argc, char* argv[])
+{
+    if (argc < 2)
+        return;
+    mkfs(argv[1], 0);
+}
+
 // 得到 name 的最后一级目录
 char *basename(char *name)
 {
@@ -426,6 +433,10 @@ static void execute(int argc, char *argv[])
     if (!strcmp(line, "umount"))
     {
         return builtin_umount(argc, argv);
+    }
+    if (!strcmp(line, "mkfs"))
+    {
+        return builtin_mkfs(argc, argv);
     }
 }
 

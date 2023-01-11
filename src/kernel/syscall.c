@@ -198,3 +198,8 @@ int umount(char *target)
 {
     return _syscall1(SYS_NR_UMOUNT, (u32)target);
 }
+
+int mkfs(char* devname, int icount)
+{
+    return _syscall2(SYS_NR_MKFS, (u32)devname, (u32)icount);
+}

@@ -183,4 +183,7 @@ void inode_truncate(inode_t *inode);
 // 打开文件，返回 inode，用于系统调用 open
 inode_t *inode_open(char *pathname, int flag, int mode);
 
+// 格式化文件系统
+int devmkfs(dev_t dev, u32 icount);
+
 #endif

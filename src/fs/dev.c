@@ -1,6 +1,7 @@
 #include <onix/fs.h>
 #include <onix/syscall.h>
 #include <onix/stat.h>
+#include <onix/assert.h>
 #include <stdio.h>
 #include <onix/device.h>
 
@@ -11,6 +12,16 @@ void dev_init()
     mkdir("/dev", 0755);
 
     device_t* device = NULL;
+
+    // 第一个虚拟磁盘作为 /dev 文件系统
+    device = device_find(DEV_RAMDISK, 0);
+    assert(device);
+    devmkfs(device->dev, 0);
+
+    super_block_t* sb = read_super(device->dev);
+    sb->iroot = iget(device->dev, 1);
+    sb->imount = namei("/dev");
+    sb->imount->mount = device->dev;
 
     // 初始化控制台，为字符文件："/dev/console"，只写
     device = device_find(DEV_CONSOLE, 0);
@@ -29,6 +40,16 @@ void dev_init()
         if (!device)
             break;
 
+        sprintf(name, "/dev/%s", device->name);
+        mknod(name, IFBLK | 0600, device->dev);
+    }
+
+    // 初始化虚拟磁盘设备，可读可写
+    for (size_t i = 1; true; i++)
+    {
+        device = device_find(DEV_RAMDISK, i);
+        if (!device)
+            break;
         sprintf(name, "/dev/%s", device->name);
         mknod(name, IFBLK | 0600, device->dev);
     }

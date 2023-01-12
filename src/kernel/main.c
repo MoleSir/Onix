@@ -1,5 +1,3 @@
-#include <onix/debug.h>
-#include <onix/interrupt.h>
 #include <onix/types.h>
 
 extern void interrupt_init();
@@ -14,6 +12,7 @@ extern void syscall_init();
 extern void keyboard_init();
 extern void tss_init();
 extern void ide_init();
+extern void serial_init();
 extern void buffer_init();
 extern void super_init();
 extern void inode_init();
@@ -31,6 +30,7 @@ void kernel_init()
     clock_init();
     keyboard_init();
     time_init();
+    serial_init();
     // rtc_init(); 
     ide_init();
     ramdisk_init();

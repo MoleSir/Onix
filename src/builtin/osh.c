@@ -51,6 +51,11 @@ void builtin_logo()
 
 void builtin_test(int argc, char *argv[])
 {
+    printf("osh test starting...\n");
+    while (true)
+    {
+        test();
+    }
 }
 
 void builtin_pwd()
@@ -464,6 +469,8 @@ static void execute(int argc, char *argv[])
 
 int osh_main()
 {        
+    builtin_test(0, NULL);
+
     // 缓冲清零
     memset(cmd, 0, sizeof(cmd));
     memset(cwd, 0, sizeof(cwd));

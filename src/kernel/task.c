@@ -288,8 +288,7 @@ void task_to_user_mode(target_t target)
     task->vmap = kmalloc(sizeof(bitmap_t));
     // 用一页空间来保存位图
     void* buf = (void*)alloc_kpage(1);
-    // 1024 字节，一共 0x1000 * 8 = 0x8000 个bit，每个 bit 对应一个页面，一共 0x8000 * 0x1000 = 0x8000000 字节
-    bitmap_init(task->vmap, buf, PAGE_SIZE, KERNEL_MEMORY_SIZE / PAGE_SIZE);
+    bitmap_init(task->vmap, buf, USER_MMAP_SIZE / PAGE_SIZE / 8, USER_MMAP_ADDR / PAGE_SIZE);
 
     // 创建用户进程页表
     task->pde = (u32)copy_pde();

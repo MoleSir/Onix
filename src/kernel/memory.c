@@ -8,6 +8,8 @@
 #include <string.h>
 #include <ds/bitmap.h>
 #include <onix/multiboot2.h>
+#include <onix/syscall.h>
+#include <onix/fs.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -338,8 +340,17 @@ static page_entry_t* get_pte(u32 vaddr, bool create)
     return table;
 }
 
+// 获取页目录项
+page_entry_t* get_entry(u32 vaddr, bool create)
+{
+    // 首先获得 vaddr 虚拟地址对应的页表首地址
+    page_entry_t* pte = get_pte(vaddr, create);
+    // 首地址 + 偏移得到页表项，表述一个使用的表面
+    return pte + TIDX(vaddr);
+}
+
 // 刷新虚拟地址 vaddr 的块表
-static void flush_tlb(u32 vaddr)
+void flush_tlb(u32 vaddr)
 {
     asm volatile("invlpg (%0)" ::"r"(vaddr)
                  : "memory");
@@ -393,35 +404,23 @@ void free_kpage(u32 vaddr, u32 count)
     LOGK("FREE  kernel pages 0x%p count %d\n", vaddr, count);
 }
 
-// 将 vaddr 映射物理内存
+// 申请一块物理页，将 vaddr 映射上去物理内存
 void link_page(u32 vaddr)
 {
     ASSERT_PAGE(vaddr);
 
-    // 得到一个页表，指明需要创建，如果存在那也不需要创建
-    page_entry_t* pte = get_pte(vaddr, true);
-    // 计算页表项地址 pte + 中间 10 位偏移
-    page_entry_t* entry = pte + (TIDX(vaddr));
+    // 获取页面项，指向一个页面
+    page_entry_t* entry = get_entry(vaddr, true);
 
-    task_t* task = running_task();
-    bitmap_t* map = task->vmap;
     // 页面在位图中的索引
     u32 index = IDX(vaddr);
 
     // 如果页面存在，直接返回
     if (entry->present)
-    {
-        assert(bitmap_test(map, index));
         return;
-    }
 
-    assert(!bitmap_test(map, index));
-    // 设置 bitmap 对应索引位置为真，表示在内存中有了真实的页面
-    bitmap_set(map, index, true);
-
-    // 找到一个空页
+    // 获得一张物理页面，将 entry 指向这个页面
     u32 paddr = get_page();
-    // 初始化页面的这个表项指向 paddr 的页面号
     entry_init(entry, IDX(paddr));
     flush_tlb(vaddr);
 
@@ -434,25 +433,19 @@ void unlink_page(u32 vaddr)
     ASSERT_PAGE(vaddr);
 
     // 得到页表与页表项
-    page_entry_t* pte = get_pte(vaddr, false);
-    page_entry_t* entry = pte + TIDX(vaddr);
+    page_entry_t* pde = get_pde();
+    page_entry_t* entry = pde + DIDX(vaddr);
+    if (!entry->present)
+        return;
 
-    // 得到内存位图与逻辑地址的页目录号
-    task_t* task = running_task();
-    bitmap_t* map = task->vmap;
-    u32 index = IDX(vaddr);
+    entry = get_entry(vaddr, false);
 
     // 如果本来就没有映射关系
     if (!entry->present)
-    {
-        assert(!bitmap_test(map, index));
         return;
-    }
-    assert(entry->present && bitmap_test(map, index));
 
     // 设置存在位为 0
     entry->present = false;
-    bitmap_set(map, index, false);
 
     // 得到原来对应的物理地址
     u32 paddr = PAGE(entry->index);
@@ -474,12 +467,14 @@ static u32 copy_page(void* page)
     // 为了把 page 上的内容拷贝到 paddr 上，先把 paddr 映射到逻辑地址 0 处
     page_entry_t* entry = get_pte(0, false);
     entry_init(entry, IDX(paddr));
+    flush_tlb(0);
     
     // 再使用逻辑地址进行拷贝
     memcpy((void*)0, (void*)page, PAGE_SIZE);
 
     // 这个页面临时使用，其中的 Index 没有意义，所以这个存在位为 0
     entry->present = false;
+    flush_tlb(0);
     return paddr;
 }
 
@@ -521,8 +516,9 @@ page_entry_t* copy_pde()
             // 页表项存在指向的页面
             assert(memory_map[entry->index] > 0);
 
-            // 设置为只读，写时拷贝
-            entry->write = false;
+            // 若不是共享内存，设置为只读
+            if (!entry->shared)
+                entry->write = false;
 
             // 物理引用 + 1
             memory_map[entry->index]++;
@@ -614,12 +610,12 @@ void page_fault(
         assert(code->write);
 
         // 获取该虚拟地址对应的页表地址与页表表项
-        page_entry_t* pte = get_pte(vaddr, false);
-        page_entry_t* entry = pte + TIDX(vaddr);
+        page_entry_t* entry = get_entry(vaddr, false);
 
         // 这个表项应该存在，页面有被使用
         assert(entry->present);
-        assert(memory_map[entry->index] > 0);
+        // 不能是共享内存
+        assert(!entry->shared);
 
         // 判断该页面的使用次数
         if (memory_map[entry->index] == 1)
@@ -680,5 +676,78 @@ int32 sys_brk(void* addr)
     }
     
     task->brk = brk;
+    return 0;
+}
+
+void* sys_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+    ASSERT_PAGE((u32)addr);
+
+    // 计算需要的页面数量
+    u32 count = div_round_up(length, PAGE_SIZE);
+    u32 vaddr = (u32)addr;
+
+    task_t* task = running_task();
+    // 如果调用者没有指定要要映射的地址，默认为第一个空闲页
+    if (!vaddr)
+        vaddr = scan_page(task->vmap, count);
+
+    assert(vaddr >= USER_MMAP_ADDR && vaddr < USER_STACK_BUTTOM);
+
+    // 对每一个页面：
+    for (size_t i = 0; i < count; ++i)
+    {
+        u32 page = vaddr + PAGE_SIZE * i;
+        // 给虚拟地址 page 映射一个物理页
+        link_page(page);
+        // 设置映射位图
+        bitmap_set(task->vmap, IDX(page), true);
+
+        // 得到描述这个物理页的页表项
+        page_entry_t* entry = get_entry(page, false);
+        entry->user = true;
+        entry->write = false;
+        if (prot & PROT_WRITE)
+        {
+            entry->write = true;
+        }
+        if (flags & MAP_SHARED)
+        {
+            entry->shared = true;
+        }
+        if (flags & MAP_PRIVATE)
+        {
+            entry->privat = true;
+        }
+    }
+
+    // 如果指定了一个文件，将文件读入获得到的内存
+    if (fd != EOF)
+    {
+        lseek(fd, offset, SEEK_SET);
+        read(fd, (char*)vaddr, length);
+    }
+
+    return (void*)vaddr;
+}
+
+int sys_munmap(void* addr, size_t length)
+{
+    task_t* task = running_task();
+    u32 vaddr = (u32)addr;
+    assert(vaddr >= USER_MMAP_ADDR && vaddr < USER_STACK_BUTTOM);
+
+    ASSERT_PAGE(vaddr);
+    u32 count = div_round_up(length, PAGE_SIZE);
+    
+    // 对每一个页面：
+    for (size_t i = 0; i < count; ++i)
+    {
+        u32 page = vaddr + i * PAGE_SIZE;
+        unlink_page(page);
+        assert(bitmap_test(task->vmap, IDX(page)));
+        bitmap_set(task->vmap, IDX(page), false);
+    }
+
     return 0;
 }

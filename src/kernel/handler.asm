@@ -193,16 +193,19 @@ syscall_handler:
     ;xchg bx, bx
 
     ; 将第 3、2、1 个参数压栈
-    push edx
-    push ecx
-    push ebx
+    push ebp    ; 第 6 个参数
+    push edi    ; 第 5 个参数
+    push esi    ; 第 4 个参数
+    push edx    ; 第 3 个参数
+    push ecx    ; 第 2 个参数
+    push ebx    ; 第 1 个参数
 
     ; 执行 syscall_table[eax]
     call [syscall_table + eax * 4]
 
     ;xchg bx, bx
     ; 系统调用结束恢复栈
-    add esp, 12
+    add esp, (6 * 4)
 
     ; 修改栈中 eax 寄存器，设置系统调用返回值
     mov dword [esp + 8 * 4], eax

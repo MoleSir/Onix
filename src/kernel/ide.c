@@ -381,25 +381,33 @@ static u32 ide_identify(ide_disk_t *disk, u16 *buf)
     LOGK("disk %s total lba %d\n", disk->name, params->total_lba);
 
     u32 ret = EOF;
-    if (params->total_lba != 0)
+    if (params->total_lba == 0)
+        goto rollback;
+
+    // VMWare
+    if (params->total_lba > (1 << 28))
     {
-        ide_swap_pairs(params->serial, sizeof(params->serial));
-        LOGK("disk %s serial number %s\n", disk->name, params->serial);
-
-        ide_swap_pairs(params->firmware, sizeof(params->firmware));
-        LOGK("disk %s firmware version %s\n", disk->name, params->firmware);
-
-        ide_swap_pairs(params->model, sizeof(params->model));
-        LOGK("disk %s model number %s\n", disk->name, params->model);
-
-        disk->total_lba = params->total_lba;
-        disk->cylinders = params->cylinders;
-        disk->heads = params->heads;
-        disk->sectors = params->sectors;
-
-        ret = 0;
+        params->total_lba = 0;
+        goto rollback;
     }
 
+    ide_swap_pairs(params->serial, sizeof(params->serial));
+    LOGK("disk %s serial number %s\n", disk->name, params->serial);
+
+    ide_swap_pairs(params->firmware, sizeof(params->firmware));
+    LOGK("disk %s firmware version %s\n", disk->name, params->firmware);
+
+    ide_swap_pairs(params->model, sizeof(params->model));
+    LOGK("disk %s model number %s\n", disk->name, params->model);
+
+    disk->total_lba = params->total_lba;
+    disk->cylinders = params->cylinders;
+    disk->heads = params->heads;
+    disk->sectors = params->sectors;
+
+    ret = 0;
+
+rollback:
     lock_release(&(disk->ctrl->lock));
     return ret;
 }

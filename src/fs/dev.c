@@ -66,6 +66,15 @@ void dev_init()
         mknod(name, IFBLK | 0600, device->dev);
     }
 
+    // 初始化串口设备，可读可写
+    for (size_t i = 0; true; ++i)
+    {
+        device_t* device = device_find(DEV_SERIAL, i);
+        if (!device)
+            break;
+        sprintf(name, "/dev/%s", device->name);
+        mknod(name, IFCHR | 0600, device->dev);
+    }
 
     // 创建三个标准输入输出文件
     link("/dev/console", "/dev/stdout");

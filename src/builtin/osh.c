@@ -52,24 +52,27 @@ void builtin_logo()
 void builtin_test(int argc, char *argv[])
 {
     u32 status;
+    fd_t fd = open("/hello.txt", O_RDWR, 0755);
 
-    int* counter = (int*)mmap(0, sizeof(int), PROT_WRITE, MAP_SHARED, EOF, 0);
+    char* ptr = (char*)mmap(0, 10, PROT_WRITE, MAP_SHARED, fd, 0);
     pid_t pid = fork();
 
     if (pid)
     {
         while (true)
         {
-            (*counter)++;
-            sleep(300);
+            printf("%s\n", ptr);
+            sleep(3000);
         }
     }
     else
     {
+        u32 i = 0;
         while (true)
         {
-            printf("counter %d\n", *counter);
-            sleep(100);
+            printf("child sleep %c\n", *(ptr + i));
+            i++;
+            sleep(1000);
         }
     }
 }

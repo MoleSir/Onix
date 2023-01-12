@@ -186,4 +186,10 @@ inode_t *inode_open(char *pathname, int flag, int mode);
 // 格式化文件系统
 int devmkfs(dev_t dev, u32 icount);
 
+#define P_EXEC IXOTH
+#define P_READ IROTH
+#define P_WRITE IWOTH
+
+bool permission(inode_t *inode, u16 mask);
+
 #endif

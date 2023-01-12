@@ -616,6 +616,8 @@ void page_fault(
         assert(entry->present);
         // 不能是共享内存
         assert(!entry->shared);
+        // 只读内存页
+        assert(!entry->readonly);
 
         // 判断该页面的使用次数
         if (memory_map[entry->index] == 1)
@@ -661,7 +663,7 @@ int32 sys_brk(void* addr)
     task_t* task = running_task();
     assert(task->uid != KERNEL_USER);
 
-    assert(KERNEL_MEMORY_SIZE <= brk && brk <= USER_STACK_BUTTOM);
+    assert(task->end <= brk && brk <= USER_MMAP_ADDR);
 
     u32 old_brk = task->brk;
 
@@ -707,8 +709,11 @@ void* sys_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off
         page_entry_t* entry = get_entry(page, false);
         entry->user = true;
         entry->write = false;
+        entry->readonly = true;
+
         if (prot & PROT_WRITE)
         {
+            entry->readonly = false;
             entry->write = true;
         }
         if (flags & MAP_SHARED)

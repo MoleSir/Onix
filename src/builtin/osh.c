@@ -246,6 +246,25 @@ void builtin_mkfs(int argc, char* argv[])
     mkfs(argv[1], 0);
 }
 
+void builtin_exec(int argc, char* argv[])
+{
+    if (argc < 2)
+        return;
+
+    int status;
+    pid_t pid = fork();
+    if (pid)
+    {
+        pid_t child = waitpid(pid, &status);
+        printf("wait pid %d status %d %d\n", child, status, time());
+    }
+    else
+    {
+        int i = execve(argv[1], NULL, NULL);
+        exit(i);
+    }
+}
+
 // 得到 name 的最后一级目录
 char *basename(char *name)
 {
@@ -437,12 +456,14 @@ static void execute(int argc, char *argv[])
     {
         return builtin_mkfs(argc, argv);
     }
+    if (!strcmp(line, "exec"))
+    {
+        return builtin_exec(argc, argv);
+    }
 }
 
 int osh_main()
-{    
-    execve("/hello.out", NULL, NULL);
-    
+{        
     // 缓冲清零
     memset(cmd, 0, sizeof(cmd));
     memset(cwd, 0, sizeof(cwd));

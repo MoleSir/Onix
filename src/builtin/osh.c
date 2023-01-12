@@ -51,30 +51,7 @@ void builtin_logo()
 
 void builtin_test(int argc, char *argv[])
 {
-    u32 status;
-    fd_t fd = open("/hello.txt", O_RDWR, 0755);
-
-    char* ptr = (char*)mmap(0, 10, PROT_WRITE, MAP_SHARED, fd, 0);
-    pid_t pid = fork();
-
-    if (pid)
-    {
-        while (true)
-        {
-            printf("%s\n", ptr);
-            sleep(3000);
-        }
-    }
-    else
-    {
-        u32 i = 0;
-        while (true)
-        {
-            printf("child sleep %c\n", *(ptr + i));
-            i++;
-            sleep(1000);
-        }
-    }
+    execve("/hello.out", NULL, NULL);
 }
 
 void builtin_pwd()

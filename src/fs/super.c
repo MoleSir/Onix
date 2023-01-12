@@ -5,6 +5,7 @@
 #include <onix/buffer.h>
 #include <onix/stat.h>
 #include <onix/task.h>
+#include <onix/time.h>
 #include <string.h>
 #include <stdlib.h>
 

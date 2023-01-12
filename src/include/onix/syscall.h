@@ -17,6 +17,7 @@ typedef enum syscall_t
     SYS_NR_CREATE = 8,
     SYS_NR_LINK = 9,
     SYS_NR_UNLINK = 10,
+    SYS_NR_EXECVE = 11,
     SYS_NR_CHDIR = 12,
     SYS_NR_TIME = 13,
     SYS_NR_MKNOD = 14,
@@ -106,5 +107,7 @@ int mount(char *devname, char *dirname, int flags);
 int umount(char *target);
 
 int mkfs(char* devname, int icount);
+
+int execve(char* filename, char* argvp[], char* envp[]);
 
 #endif

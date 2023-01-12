@@ -585,7 +585,7 @@ typedef struct page_error_code_t
     u8 reserved1 : 8;
     u8 sgx : 1;
     u16 reserved2;
-} _packed page_error_code_t;
+}_packed page_error_code_t;
 
 // page fault
 void page_fault(

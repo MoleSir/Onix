@@ -32,7 +32,7 @@ int atoi(const char* str)
         return 0;
     bool sign = 1;
     int result = 0;
-    if (*str == '-1')
+    if (*str == '-')
     {
         sign = -1;
         str++;

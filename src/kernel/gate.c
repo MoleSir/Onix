@@ -80,6 +80,8 @@ extern int32 sys_brk(void* addr);
 extern void* sys_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 extern int sys_munmap(void* addr, size_t length);
 
+extern int sys_execve(char* filename, char* argvp[], char* envp[]);
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
@@ -121,4 +123,5 @@ void syscall_init()
     syscall_table[SYS_NR_MKFS] = sys_mkfs;
     syscall_table[SYS_NR_MMAP] = sys_mmap;
     syscall_table[SYS_NR_MUNMAP] = sys_munmap;
+    syscall_table[SYS_NR_EXECVE] = sys_execve;
 }

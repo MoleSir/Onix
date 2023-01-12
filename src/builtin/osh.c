@@ -51,7 +51,6 @@ void builtin_logo()
 
 void builtin_test(int argc, char *argv[])
 {
-    execve("/hello.out", NULL, NULL);
 }
 
 void builtin_pwd()
@@ -441,7 +440,9 @@ static void execute(int argc, char *argv[])
 }
 
 int osh_main()
-{
+{    
+    execve("/hello.out", NULL, NULL);
+    
     // 缓冲清零
     memset(cmd, 0, sizeof(cmd));
     memset(cwd, 0, sizeof(cwd));

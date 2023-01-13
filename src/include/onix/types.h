@@ -18,6 +18,10 @@
 #define false 0
 #endif
 
+#define weak __attribute__((__weak__))
+
+#define noreturn __attribute__((__noreturn__))
+
 #define _packed __attribute__((packed)) // 定义特殊结构体
 
 #define _ofp __attribute__((optimize("omit-frame-pointer")))

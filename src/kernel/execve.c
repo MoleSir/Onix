@@ -309,6 +309,102 @@ static u32 load_elf(inode_t* inode)
     return ehdr->e_entry;
 }
 
+static int count_argv(char* argv[])
+{
+    if (!argv)
+        return 0;
+    int i = 0;
+    while (argv[i])
+        i++;
+    return i;
+}
+
+static u32 copy_argv_envp(char* filename, char* argv[], char* envp[])
+{
+    // 计算参数数量
+    int argc = count_argv(argv) + 1;
+    int envc = count_argv(envp);
+
+    // 分配内核内存，用于临时存储参数
+    u32 pages = alloc_kpage(4);
+    u32 pages_end = pages + 4 * PAGE_SIZE;
+
+    // 内核临时栈顶地址
+    char* ktop = (char*)pages_end;
+    // 用户栈顶地址
+    char* utop = (char*)USER_STACK_TOP;
+
+    // 内核参数
+    char** argvk = (char**)alloc_kpage(1);
+    // NULL 结尾
+    argvk[argc] = NULL;
+
+    // 内核环境变量
+    char** envpk = argvk + argc + 1;
+    envpk[envc] = NULL;
+
+    int len = 0;
+    // 拷贝 envp
+    for (int i = envc - 1; i >= 0; i--)
+    {
+        // 计算长度
+        len = strlen(envp[i]) + 1;
+        // 得到拷贝地址
+        ktop -= len;
+        utop -= len;
+        // 拷贝字符串到内核
+        memcpy(ktop, envp[i], len);
+        // 数组中保存的是用户态地址
+        envpk[i] = utop;
+    }
+
+    // 拷贝 argv，结尾有个 NULL
+    for (int i = argc - 1; i > 0; i--)
+    {
+        // 计算长度
+        len = strlen(argv[i - 1]) + 1;
+        // 得到拷贝地址
+        ktop -= len;
+        utop -= len;
+        // 拷贝字符串到内核
+        memcpy(ktop, argv[i - 1], len);
+        // 数组中保存的是用户态地址
+        argvk[i] = utop;
+    }
+
+    // 拷贝 argv[0]
+    len = strlen(filename) + 1;
+    ktop -= len;
+    utop -= len;
+    memcpy(ktop, filename, len);
+    argvk[0] = utop;
+
+    // 将 envp 数组拷贝内核
+    ktop -= (envc + 1) * 4;
+    memcpy(ktop, envpk, (envc + 1) * 4);
+
+    // 将 argv 数组拷贝到内核
+    ktop -= (argc + 1) * 4;
+    memcpy(ktop, argvk, (argc + 1) * 4);
+
+    // 为 argc 赋值
+    ktop -= 4;
+    *(int*)ktop = argc;
+
+    assert((u32)ktop > pages);
+
+    // 将参数和环境变量拷贝到用户栈
+    len = (pages_end - (u32)ktop);
+    utop = (char* )(USER_STACK_TOP - len);
+    memcpy(utop, ktop, len);
+
+    // 释放内存
+    free_kpage((u32)argvk, 1);
+    free_kpage(pages, 4);
+
+    return (u32)utop;
+}
+
 extern int sys_brk();
 
 int sys_execve(char* filename, char* argvp[], char* envp[])
@@ -329,7 +425,8 @@ int sys_execve(char* filename, char* argvp[], char* envp[])
     task_t* task = running_task();
     strncpy(task->name, filename, TASK_NAME_LEN);
 
-    // TODO 
+    // 处理参数和环境变量
+    u32 top = copy_argv_envp(filename, argvp, envp);    
 
     // 释放原程序的堆内存
     task->end = USER_EXEC_ADDR;
@@ -347,9 +444,11 @@ int sys_execve(char* filename, char* argvp[], char* envp[])
     task->iexec = inode;
 
     intr_frame_t* iframe = (intr_frame_t*)((u32)task + PAGE_SIZE - sizeof(intr_frame_t));
+    // 动态链接器地址
+    iframe->edx = 0;
     iframe->eip = entry;
-    iframe->esp = (u32)USER_STACK_TOP;
-    
+    iframe->esp = top;
+
     // ROP，伪装中断返回，eip 指向 entry
     asm volatile(
         "movl %0, %%esp\n"

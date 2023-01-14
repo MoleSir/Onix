@@ -39,8 +39,15 @@ $(BUILD)/lib/libc.o: $(BUILD)/lib/crt.o \
 	$(BUILD)/lib/printf.o \
 	$(BUILD)/lib/syscall.o \
 	$(BUILD)/lib/assert.o \
+	$(BUILD)/lib/time.o \
 
 	ld -m elf_i386 -r $^ -o $@
+
+BUILTIN_APPS := \
+	$(BUILD)/builtin/env.out \
+	$(BUILD)/builtin/echo.out \
+	$(BUILD)/builtin/cat.out \
+	$(BUILD)/builtin/ls.out \
 
 $(BUILD)/builtin/%.out: $(BUILD)/builtin/%.o \
 	$(BUILD)/lib/libc.o \

@@ -80,7 +80,7 @@ void task_put_fd(task_t* task, fd_t fd)
     if (fd < 3)
         return;
     assert(fd < TASK_FILE_NR);
-    task->files[fd] == NULL;
+    task->files[fd] = NULL;
 }
 
 extern pid_t sys_getppid();
@@ -487,11 +487,13 @@ void task_exit(int status)
     iput(task->iexec);
 
     // 关闭打开的文件
-    for (size_t i = 0; i < TASK_FILE_NR; ++i)
+    for (size_t i = 0; i < TASK_FILE_NR; i++)
     {
-        file_t* file = task->files[i];
+        file_t *file = task->files[i];
         if (file)
+        {
             close(i);
+        }
     }
 
     // 将子进程的父进程复制为自己的父进程

@@ -95,6 +95,9 @@ extern int sys_munmap(void* addr, size_t length);
 
 extern int sys_execve(char* filename, char* argvp[], char* envp[]);
 
+extern fd_t sys_dup(fd_t oldfd);
+extern fd_t sys_dup2(fd_t oldfd, fd_t newfd);
+
 void syscall_init()
 {
     for (size_t i = 0; i < SYSCALL_SIZE; ++i)
@@ -137,4 +140,6 @@ void syscall_init()
     syscall_table[SYS_NR_MMAP] = sys_mmap;
     syscall_table[SYS_NR_MUNMAP] = sys_munmap;
     syscall_table[SYS_NR_EXECVE] = sys_execve;
+    syscall_table[SYS_NR_DUP] = sys_dup;
+    syscall_table[SYS_NR_DUP2] = sys_dup2;
 }

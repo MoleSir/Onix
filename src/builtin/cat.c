@@ -34,7 +34,7 @@ int main(int argc, char const *argv[])
         int len = read(fd, buf, BUFLEN);
         if (len == EOF)
             break;
-        // 写文件，写到 1 号文件：显示屏设备
+        // 写文件，写到 1 号文件
         write(1, buf, len);
     }
     // 关闭文件

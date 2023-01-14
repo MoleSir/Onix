@@ -159,17 +159,175 @@ void builtin_mkfs(int argc, char *argv[])
     mkfs(argv[1], 0);
 }
 
-void builtin_exec(char* filename, int argc, char* argv[])
+static void dupfile(int argc, char** argv, fd_t dupfd[3])
+{
+    dupfd[0] = dupfd[1] = dupfd[2] = EOF;
+
+    int outappend = 0;
+    int errappend = 0;
+
+    char* infile = NULL;
+    char* outfile = NULL;
+    char* errfile = NULL;
+
+    for (size_t i = 0; i < argc; ++i)
+    {
+        // 如果当前的参数是 "<"，并且下一参数存在
+        if (!strcmp(argv[i], "<") && (i + 1) < argc)
+        {
+            // 设置下一个参数为输入文件
+            infile = argv[i + 1];
+            // 命令的有效参数截止到此
+            argv[i] = NULL;
+            i++;
+            continue; 
+        }
+        // 如果当前的参数是 ">"，并且下一参数存在
+        if (!strcmp(argv[i], ">") && (i + 1) < argc)
+        {
+            // 设置下一个参数为输出文件
+            outfile = argv[i + 1];
+            argv[i] = NULL;
+            i++;
+            continue; 
+        }
+        // 如果当前的参数是 ">>"，并且下一参数存在
+        if (!strcmp(argv[i], ">>") && (i + 1) < argc)
+        {
+            // 设置下一个参数为输出文件
+            outfile = argv[i + 1];
+            argv[i] = NULL;
+            // 输出方式为追加
+            outappend = O_APPEND;
+            i++;
+            continue; 
+        }
+        // 如果当前的参数是 "2>"，并且下一参数存在
+        if (!strcmp(argv[i], ">") && (i + 1) < argc)
+        {
+            // 设置下一个参数为错误输出文件
+            errfile = argv[i + 1];
+            argv[i] = NULL;
+            i++;
+            continue; 
+        }
+        // 如果当前的参数是 "2>>"，并且下一参数存在
+        if (!strcmp(argv[i], ">>") && (i + 1) < argc)
+        {
+            // 设置下一个参数为错误输出文件
+            errfile = argv[i + 1];
+            argv[i] = NULL;
+            // 输出方式为追加
+            errappend = O_APPEND;
+            i++;
+            continue;
+        }
+    }
+
+    // 如果输入文件存在，就打开，并且 dupfd[0] 保存其文件描述符
+    if (infile != NULL)
+    {
+        fd_t fd = open(infile, O_RDONLY | outappend | O_CREAT, 0755);
+        if (fd == EOF)
+        {
+            printf("open file %s failure\n", infile);
+            goto rollback;
+        }
+        dupfd[0] = fd;
+    }
+    // 如果输出文件存在，就打开，并且 dupfd[1] 保存其文件描述符
+    if (outfile != NULL)
+    {
+        fd_t fd = open(outfile, O_WRONLY | outappend | O_CREAT, 0755);
+        if (fd == EOF)
+        {
+            printf("open file %s failure\n", infile);
+            goto rollback;
+        }
+        dupfd[1] = fd;
+    }
+    // 如果错误输出文件存在，就打开，并且 dupfd[2] 保存其文件描述符
+    if (errfile != NULL)
+    {
+        fd_t fd = open(errfile, O_WRONLY | errappend | O_CREAT, 0755);
+        if (fd == EOF)
+        {
+            printf("open file %s failure\n", infile);
+            goto rollback;
+        }
+        dupfd[2] = fd;
+    }
+    return;
+
+rollback:
+    for (size_t i = 0; i < 3; ++i)
+    {
+        if (dupfd[i] != EOF)
+            close(dupfd[i]);
+    }
+}
+
+pid_t builtin_command(char *filename, char *argv[], fd_t infd, fd_t outfd, fd_t errfd)
 {
     int status;
     pid_t pid = fork();
     if (pid)
     {
-        pid_t child = waitpid(pid, &status);
-        return;
+        // 对父进程，如果存在重定向，把重定向的文件关闭
+        if (infd != EOF)
+            close(infd);
+        if (outfd != EOF)
+            close(outfd);
+        if (errfd != EOF)
+            close(errfd);
+        // 父进程返回到 exec，等待子进程结束
+        return pid;
     }
+    
+    // 对子进程
+    if (infd != EOF)
+    {
+        // 存在输入重定向，将 infd 设置到标准输入上
+        fd_t fd = dup2(infd, STDIN_FILENO);
+        close(infd);
+    }
+    if (outfd != EOF)
+    {
+        // 存在输出重定向，将 outfd 设置到标准输出上
+        fd_t fd = dup2(outfd, STDOUT_FILENO);
+        close(outfd);
+    }
+    if (errfd != EOF)
+    {
+        // 存在错误输出重定向，将 errfd 设置到标准错误输出上
+        fd_t fd = dup2(errfd, STDERR_FILENO);
+        close(errfd);
+    }
+
+    // 执行
     int i = execve(filename, argv, envp);
     exit(i);
+}
+
+void builtin_exec(int argc, char* argv[])
+{
+    stat_t statbuf;
+    // 找到可执行文件名
+    sprintf(buf, "bin/%s.out", argv[0]);
+    if (stat(buf, &statbuf) == EOF)
+    {
+        printf("osh: commnad not found: %s!!!", argv[0]);
+        return;
+    }
+
+    int status;
+    fd_t dupfd[3];
+    // 尝试根据命令行参数，对进程的文件描述符进行重定向，标准输入输出文件重定向的结果保存在 dupfd 中
+    // 如果 dupfd 中保存 EOF，说明对应标准输入输出没有重定向，保持标准
+    dupfile(argc, argv, dupfd);
+    
+    pid_t pid = builtin_command(buf, &argv[1], dupfd[0], dupfd[1], dupfd[2]);
+    waitpid(pid, &status);
 }
 
 static void execute(int argc, char *argv[])
@@ -231,16 +389,8 @@ static void execute(int argc, char *argv[])
     if (!strcmp(line, "mkfs"))
     {
         return builtin_mkfs(argc, argv);
-    }   
-
-    stat_t statbuf;
-    sprintf(buf, "/bin/%s.out", argv[0]);
-    if (stat(buf, &statbuf) == EOF)
-    {
-        printf("osh: command not found: %s\n", argv[0]);
-        return;
     }
-    return builtin_exec(buf, argc - 1, &argv[1]);
+    return builtin_exec(argc, argv);
 }
 
 void readline(char *buf, u32 count)

@@ -141,7 +141,7 @@ buffer_t *find_entry(inode_t **dir, const char *name, char **next, dentry_t **re
             entry = (dentry_t*)buf->data;
         }
         // 判断名称是否匹配
-        if (match_name(name, entry->name, next))
+        if (match_name(name, entry->name, next) && entry->nr)
         {
             // 找到了 entry，并且返回 entry 所在磁盘块的缓冲 
             *result = entry;
@@ -728,7 +728,7 @@ inode_t *inode_open(char *pathname, int flag, int mode)
     
 makeup:
     // 权限不足
-    if (!permission(inode, flag & O_ACCMODE))
+    if (!permission(inode, ACC_MODE(flag & O_ACCMODE)))
         goto rollback;
     
     // 目录只能只读打开

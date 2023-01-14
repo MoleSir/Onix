@@ -213,6 +213,43 @@ int sys_readdir(fd_t fd, dirent_t* dir, u32 count)
     return sys_read(fd, (char*)dir, sizeof(dirent_t));
 }
 
+static int dupfd(fd_t fd, fd_t arg)
+{
+    task_t* task = running_task();
+    if (fd >= TASK_FILE_NR || !(task->files[fd]))
+        return EOF;
+
+    // 从 task->files 数组中找到从下标 arg 开始最小的一个空文件描述符指针 
+    for (; arg < TASK_FILE_NR; arg++)
+    {
+        if (!(task->files[arg]))
+            break;
+    }
+
+    if (arg >= TASK_FILE_NR)
+        return EOF;
+    
+    // 空的文件描述符指针指向旧的文件描述符
+    task->files[arg] = task->files[fd];
+    // 文件描述符引用 ++
+    task->files[arg]->count++;
+    return arg;
+}
+
+fd_t sys_dup(fd_t oldfd)
+{
+    // 第二参数写 0，表示将 oldfd 对应的文件，映射到下标最小的空闲文件描述符表位置
+    return dupfd(oldfd, 0);
+}
+
+fd_t sys_dup2(fd_t oldfd, fd_t newfd)
+{
+    // 先把 newfd 关闭，保证 newfd 文件描述符为 NULL
+    close(newfd);
+    // 执行 dupfd 时，最后一定选到 newfd，即将 oldfd 与 newfd 指向同一个文件
+    return dupfd(oldfd, newfd);
+}
+
 void file_init()
 {
     for (size_t i = 3; i < FILE_NR; ++i)

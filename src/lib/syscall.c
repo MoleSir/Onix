@@ -253,3 +253,13 @@ int execve(char* filename, char* argvp[], char* envp[])
 {
     return _syscall3(SYS_NR_EXECVE, (u32)filename, (u32)argvp, (u32)envp);
 }
+
+fd_t dup(fd_t oldfd)
+{
+    return _syscall1(SYS_NR_DUP, (u32)oldfd);
+}
+
+fd_t dup2(fd_t oldfd, fd_t newfd)
+{
+    return _syscall2(SYS_NR_DUP2, (u32)oldfd, (u32)newfd);
+}

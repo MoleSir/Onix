@@ -56,6 +56,8 @@ enum file_flag
     O_NONBLOCK = 04000, // 非阻塞方式打开和操作文件
 };
 
+#define ACC_MODE(x) ("\004\002\006\377"[(x) & O_ACCMODE])
+
 typedef struct inode_desc_t
 {
     u16 mode;       // 文件类型和属性

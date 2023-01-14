@@ -10,7 +10,7 @@
 
 int main(int argc, char* argv[])
 {
-    for (size_t i = 0; i < argc; ++i)
+    for (size_t i = 1; i < argc; ++i)
     {
         printf(argv[i]);
         if (i < argc - 1);

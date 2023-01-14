@@ -5,6 +5,9 @@
 #include <onix/fs.h>
 #include <onix/task.h>
 #include <onix/stat.h>
+#include <onix/arena.h>
+#include <ds/fifo.h>
+#include <onix/memory.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -45,6 +48,45 @@ static inline idx_t cal_inode_block(super_block_t* sb, idx_t nr)
     // inode 的 nr 从 1 开始编址
     // 磁盘结构：主引导 + 超级块 + inode 位图 + 文件块位图 + (nr-1) / 一块的 inode 数量
     return 2 + sb->desc->imap_block + sb->desc->zmap_block + (nr - 1) / BLOCK_INODES;
+}
+
+// 获取管道
+inode_t* get_pipe_inode()
+{
+    inode_t* inode = get_free_inode_struct();
+
+    // 不是实际存在于设备中，但 EOF = -1 表示无效，所以这里使用 -2
+    inode->dev = -2;
+    // 申请内存，表示缓冲队列，用 desc 保持缓冲队列结构体地址
+    inode->desc = (inode_desc_t*)kmalloc(sizeof(fifo_t));
+    // 管道缓冲区，用 buf 保持缓冲队列缓冲区地址
+    inode->buf = (void*)alloc_kpage(1);
+    // 两个文件
+    inode->count = 2;
+    // 管道标志
+    inode->pipe = true;
+    // 初始化输入输出设备
+    fifo_init((fifo_t*)(inode->desc), (char*)(inode->buf), PAGE_SIZE);
+    
+    return inode;
+}
+
+// 释放管道
+void put_pipe_inode(inode_t* inode)
+{
+    if (!inode)
+        return;
+    inode->count--;
+    if (inode->count)
+        return;
+    inode->pipe = false;
+
+    // 释放 fifo
+    kfree(inode->desc);
+    // 释放缓冲区
+    free_kpage((u32)(inode->buf), 1);
+    // 释放 inode
+    put_free_inode_struct(inode);
 }
 
 // 从 dev 号磁盘的已被读取的 inode 中查找编号为 nr 的 inode
@@ -155,6 +197,12 @@ void iput(inode_t* inode)
 {
     if (!inode)
         return;
+    
+    if (inode->pipe)
+    {
+        put_pipe_inode(inode);
+        return;
+    }
     
     if (inode->buf->dirty)
         bwrite(inode->buf);

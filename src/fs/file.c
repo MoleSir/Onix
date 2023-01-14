@@ -95,8 +95,15 @@ u32 sys_read(fd_t fd, char* buf, u32 count)
         return EOF;
 
     inode_t* inode = file->inode;
+
+    // 管道文件
+    if (inode->pipe)
+    {
+        len = pipe_read(inode, buf, count);
+        return len;
+    }
     // 字符文件
-    if (ISCHR(inode->desc->mode))
+    else if (ISCHR(inode->desc->mode))
     {
         assert(inode->desc->zone[0]);
         // 读设备
@@ -141,8 +148,15 @@ u32 sys_write(fd_t fd, char* buf, u32 count)
 
     int len = 0;
     inode_t* inode = file->inode;
+
+    // 管道文件
+    if (inode->pipe)
+    {
+        int len = pipe_write(inode, buf, count);
+        return len;
+    }
     // 字符文件
-    if (ISCHR(inode->desc->mode))
+    else if (ISCHR(inode->desc->mode))
     {
         assert(inode->desc->zone[0]);
         // 读设备

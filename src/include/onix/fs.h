@@ -80,6 +80,9 @@ typedef struct inode_t
     time_t ctime;           // 修改时间
     list_node_t node;       // 链表节点
     dev_t mount;            // 安装设备
+    struct task_t* rxwaiter;// 读等待进程
+    struct task_t* txwaiter;// 写等待进程
+    bool pipe;              // 管道标志
 } inode_t;
 
 typedef struct super_desc_t
@@ -193,5 +196,11 @@ int devmkfs(dev_t dev, u32 icount);
 #define P_WRITE IWOTH
 
 bool permission(inode_t *inode, u16 mask);
+
+ // 获取管道
+inode_t* get_pipe_inode();
+
+// 释放管道
+void put_pipe_inode(inode_t* inode);
 
 #endif

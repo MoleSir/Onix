@@ -263,3 +263,8 @@ fd_t dup2(fd_t oldfd, fd_t newfd)
 {
     return _syscall2(SYS_NR_DUP2, (u32)oldfd, (u32)newfd);
 }
+
+int pipe(fd_t pipefd[2])
+{
+    return _syscall1(SYS_NR_PIPE, (u32)pipefd);
+}

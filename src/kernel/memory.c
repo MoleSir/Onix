@@ -10,6 +10,7 @@
 #include <onix/multiboot2.h>
 #include <onix/syscall.h>
 #include <onix/fs.h>
+#include <onix/printk.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -271,6 +272,8 @@ void mapping_init()
         // 设置页目录项目
         page_entry_t* dentry = &pde[didx];
         entry_init(dentry, IDX((u32)pte));
+        // 只能被内核访问
+        dentry->user = 0;
 
         // 设置页面的 1024 个表项目
         // 每次设置一个页目录都让 index + 1，使得所有页面顺序映射内存的起始部分内存
@@ -283,6 +286,8 @@ void mapping_init()
             // 对每一个页目录设置，指向内存的第 index 个页面
             page_entry_t* tentry = &pte[tidx];
             entry_init(tentry, index);
+            // 只能被内核访问
+            tentry->user = 0;
             memory_map[index] = 1;
         }
     }
@@ -602,7 +607,13 @@ void page_fault(
     page_error_code_t* code = (page_error_code_t*)(&error);
     task_t* task = running_task();
     
-    assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);
+    // 用户程序访问内核！
+    if (vaddr < USER_EXEC_ADDR || vaddr >= USER_STACK_TOP)
+    {
+        assert(task->uid);
+        printk("Segmentation Fault!!!\n");
+        task_exit(-1);
+    }
 
     // 错误码表示，这个地址存在物理页
     if (code->present)

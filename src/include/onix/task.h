@@ -112,4 +112,7 @@ void task_wakeup();
 fd_t task_get_fd(task_t* task);
 void task_put_fd(task_t* task, fd_t fd);
 
+
+void task_to_user_mode();
+
 #endif

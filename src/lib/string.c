@@ -1,6 +1,10 @@
 #include <onix/types.h>
 #include <string.h>
 
+#define SEPARATOR1 '/'
+#define SEPARATOR2 '\\'
+#define IS_SEPARATOR(c) (c == SEPARATOR1 || c == SEPARATOR2)
+
 char* strcpy(char* dest, const char* src)
 {
     char* ptr = dest;
@@ -128,5 +132,32 @@ void* memchr(const void* str, int ch, size_t count)
         if (*ptr == ch)
             return (void*)ptr;
         ptr++;
+    }
+}
+
+// 获得第一个文件分隔符
+char* strsep(const char* str)
+{
+    char* ptr =  (char*)str;
+    while (true)
+    {
+        if (IS_SEPARATOR(*ptr))
+            return ptr;
+        if (*(ptr++) == EOS)
+            return NULL;
+    }
+}
+
+// 获取最后一个分隔符
+char* strrsep(const char* str)
+{
+    char* last = NULL;
+    char* ptr = (char*)str;
+    while (true)
+    {
+        if (IS_SEPARATOR(*ptr))
+            last = ptr;
+        if (*(ptr++) == EOS)
+            return last;
     }
 }

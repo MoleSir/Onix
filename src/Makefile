@@ -44,6 +44,8 @@ $(BUILD)/lib/libc.o: $(BUILD)/lib/crt.o \
 	ld -m elf_i386 -r $^ -o $@
 
 BUILTIN_APPS := \
+	$(BUILD)/builtin/init.out \
+	$(BUILD)/builtin/osh.out \
 	$(BUILD)/builtin/env.out \
 	$(BUILD)/builtin/echo.out \
 	$(BUILD)/builtin/cat.out \
@@ -106,7 +108,6 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/ds/bitmap.o \
 	$(BUILD)/ds/list.o \
 	$(BUILD)/ds/fifo.o \
-	$(BUILD)/builtin/osh.o \
 
 	$(shell mkdir -p $(dir $@))
 	ld ${LDFLAGS} $^ -o $@

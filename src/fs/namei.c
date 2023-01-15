@@ -7,6 +7,7 @@
 #include <string.h>
 #include <onix/task.h>
 #include <onix/memory.h>
+#include <string.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -40,33 +41,6 @@ bool permission(inode_t *inode, u16 mask)
     if ((mode & mask & 0b111) == mask)
         return true;
     return false;
-}
-
-// 获得第一个文件分隔符
-char* strsep(const char* str)
-{
-    char* ptr =  (char*)str;
-    while (true)
-    {
-        if (IS_SEPARATOR(*ptr))
-            return ptr;
-        if (*(ptr++) == EOS)
-            return NULL;
-    }
-}
-
-// 获取最后一个分隔符
-char* strrsep(const char* str)
-{
-    char* last = NULL;
-    char* ptr = (char*)str;
-    while (true)
-    {
-        if (IS_SEPARATOR(*ptr))
-            last = ptr;
-        if (*(ptr++) == EOS)
-            return last;
-    }
 }
 
 // 判断文件名是否相等

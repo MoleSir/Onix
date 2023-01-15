@@ -1,4 +1,5 @@
 #include <onix/types.h>
+#include <stdio.h>
 #include <onix/syscall.h>
 
 int main()

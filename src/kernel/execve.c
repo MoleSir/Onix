@@ -9,8 +9,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define MAX(x, y) ((x) < (y) ? (y) : (x))
-
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
 typedef u32 Elf32_Word;

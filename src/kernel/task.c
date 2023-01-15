@@ -281,6 +281,8 @@ static task_t* task_create(target_t target, const char* name, u32 priority, u32 
     return task;
 }
 
+extern int sys_execve(char* filename, char* argvp[], char* envp[]);
+
 // 调用该函数的地方不能用任何局部变量
 // 调用前栈顶需要准备足够的空间
 void task_to_user_mode()

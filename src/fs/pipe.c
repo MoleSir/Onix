@@ -80,11 +80,11 @@ int sys_pipe(fd_t pipefd[2])
     // 从进程中拿到一个空文件描述符
     pipefd[0] = task_get_fd(task);
     // 从全局文件数组中拿一个空闲的，将指针赋值给这个进程
-    files[0] = task->files[pipefd[0]] = get_file();
+    files[0] = task->files[pipefd[0]] = (file_t*)get_file();
 
     // 同上
     pipefd[1] = task_get_fd(task);
-    files[1] = task->files[pipefd[1]] = get_file();
+    files[1] = task->files[pipefd[1]] = (file_t*)get_file();
 
     // 0 文件的 inode 指向管道，并且为只读
     files[0]->inode = inode;

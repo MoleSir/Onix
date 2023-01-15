@@ -4,6 +4,7 @@
 #include <onix/device.h>
 #include <onix/stat.h>
 #include <onix/types.h>
+#include <onix/syscall.h>
 
 #define FILE_NR 128
 

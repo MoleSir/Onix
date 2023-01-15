@@ -203,4 +203,12 @@ inode_t* get_pipe_inode();
 // 释放管道
 void put_pipe_inode(inode_t* inode);
 
+// 读管道
+int pipe_read(inode_t* inode, char* buf, int count);
+
+// 写管道
+int pipe_write(inode_t* inode, char* buf, int count);
+
+file_t* get_file();
+
 #endif

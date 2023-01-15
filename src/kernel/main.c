@@ -18,6 +18,7 @@ extern void super_init();
 extern void inode_init();
 extern void file_init();
 extern void ramdisk_init();
+extern void set_interrupt_state(bool state);
 extern void hang();
 
 void kernel_init()

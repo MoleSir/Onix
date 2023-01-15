@@ -185,7 +185,7 @@ void builtin_mkfs(int argc, char *argv[])
     mkfs(argv[1], 0);
 }
 
-static void dupfile(int argc, char** argv, fd_t dupfd[3])
+static int dupfile(int argc, char** argv, fd_t dupfd[3])
 {
     dupfd[0] = dupfd[1] = dupfd[2] = EOF;
 
@@ -283,7 +283,7 @@ static void dupfile(int argc, char** argv, fd_t dupfd[3])
         }
         dupfd[2] = fd;
     }
-    return;
+    return 0;
 
 rollback:
     for (size_t i = 0; i < 3; ++i)
@@ -291,6 +291,7 @@ rollback:
         if (dupfd[i] != EOF)
             close(dupfd[i]);
     }
+    return EOF;
 }
 
 pid_t builtin_command(char *filename, char *argv[], fd_t infd, fd_t outfd, fd_t errfd)
@@ -337,23 +338,72 @@ pid_t builtin_command(char *filename, char *argv[], fd_t infd, fd_t outfd, fd_t 
 
 void builtin_exec(int argc, char* argv[])
 {
-    stat_t statbuf;
-    // 找到可执行文件名
-    sprintf(buf, "bin/%s.out", argv[0]);
-    if (stat(buf, &statbuf) == EOF)
-    {
-        printf("osh: commnad not found: %s!!!", argv[0]);
+    bool p = true;
+    int status;
+
+    char** bargv = NULL;
+    char* name = buf;
+
+    fd_t dupfd[3];
+    // 尝试重定向，找 ">" ">>" 等
+    if (dupfile(argc, argv, dupfd) == EOF)
         return;
+    
+    // 第一个命令的输入为重定向输入
+    fd_t infd = dupfd[0];
+    fd_t pipefd[2];
+    // 命令的个数
+    int count = 0;
+
+    // 遍历每一个命令行参数
+    for (int i = 0; i < argc; ++i)
+    {
+        if (!argv[i])
+            continue;
+
+        // 如果当前非管道，并且命令是 "|"
+        if (!p && !strcmp(argv[i], "|"))
+        {
+            // 将 当前目录参数设置为空，截断这部分的命令参数
+            argv[i] = NULL;
+            // 创建一个管道
+            int ret = pipe(pipefd);
+            // 执行命令：输入为 infd，输出为写管道
+            builtin_command(name, bargv, infd, pipefd[1], EOF);
+            //  每执行一个命令，count++
+            count++;
+            // 设置 infd 为读管道，如果还存在 "|"，那么这次的输出就可以到下一命令的输入
+            infd = pipefd[0];
+            int len = strlen(name) + 1;
+            name += len;
+            p = true;
+            continue;
+        }
+        if (!p)
+            continue;
+        
+        // 当前 p 为 true，还没解析到一个完整的命令，开始找命令
+        stat_t statbuf;
+        sprintf(name, "/bin/%s.out", argv[i]);
+        if (stat(name, &statbuf) == EOF)
+        {
+            printf("osh: command not found: %s\n", argv[i]);
+            return;
+        }
+        // argv[i] 指向命令名称，所以命令的参数列表从 argv[i + 1] 开始
+        bargv = &argv[i + 1];
+        // 解析到一个可执行的命令（但还没执行），设置 p 为 false，等待 | 的出现后执行
+        p = false;
     }
 
-    int status;
-    fd_t dupfd[3];
-    // 尝试根据命令行参数，对进程的文件描述符进行重定向，标准输入输出文件重定向的结果保存在 dupfd 中
-    // 如果 dupfd 中保存 EOF，说明对应标准输入输出没有重定向，保持标准
-    dupfile(argc, argv, dupfd);
-    
-    pid_t pid = builtin_command(buf, &argv[1], dupfd[0], dupfd[1], dupfd[2]);
-    waitpid(pid, &status);
+    // 执行最后一个 | 符号后的命令（或者没有 | 符号）
+    int pid = builtin_command(name, bargv, infd, dupfd[1], dupfd[2]);
+
+    // 回收子进程
+    for (size_t  i = 0; i <= count; ++i)
+    {
+        pid_t child = waitpid(-1, &status);
+    }
 }
 
 static void execute(int argc, char *argv[])
